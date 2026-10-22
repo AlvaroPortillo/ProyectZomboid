@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Zomboid</title>
+  <meta name="description" content="Tier de las armas de fuego de Project Zomboid 42.21 con datos extraídos de los scripts del juego.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="publicado.js" defer></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C171B'/%3E%3Ctext x='16' y='23' font-family='Arial Black,Arial' font-weight='900' font-size='20' text-anchor='middle' fill='none' stroke='%23FFB547' stroke-width='1.6'%3ES%3C/text%3E%3C/svg%3E">
+</head>
+<body data-compact="false">
+  <a class="skip" href="#contenido">Saltar al tier</a>
+
+  <header class="topbar" id="topbar">
+    <div class="topbar__inner">
+      <div class="toprow">
+        <div class="brand">
+          <h1>Project Zomboid</h1>
+          <nav class="tabs" aria-label="Secciones">
+            <a class="tab" href="index.html" aria-current="page">Armas</a>
+            <a class="tab" href="firearms.html">Armas con mods</a>
+            <a class="tab" href="habilidades.html">Habilidades</a>
+            <a class="tab" href="curacion.html">Curación</a>
+            <a class="tab" href="directo.html">En directo</a>
+          </nav>
+        </div>
+        <label class="search">
+          <span class="sr-only">Buscar arma por nombre</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+          <input type="search" id="q" placeholder="Buscar arma (pulsa /)" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="controls" role="group" aria-label="Opciones de vista">
+          <a class="btn btn--map" href="https://pzmap.org/" target="pzmap" data-map rel="external" title="Abre pzmap.org en su propia ventana">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 3.5 5.5 2l5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5z"/><path d="M5.5 2v10.5M10.5 3.5V14"/></svg>
+            <span class="btn__label">Mapa</span>
+          </a>
+          <button class="btn btn--icon" type="button" id="compactBtn" aria-pressed="false" title="Vista compacta">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+            <span class="btn__label">Compacto</span>
+          </button>
+          <button class="btn btn--icon" type="button" id="themeBtn" aria-label="Cambiar tema" title="Cambiar tema">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+            <span class="btn__label" id="themeLabel">Tema claro</span>
+          </button>
+          <button class="btn btn--icon" type="button" id="pipBtn" hidden title="Ventana flotante con los tiers S, A y B">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><rect x="8" y="8" width="5" height="4" rx="1" fill="currentColor"/></svg>
+            <span class="btn__label">Flotante</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="filterrow">
+        <span class="chips__label" id="catLabel">Tipo</span>
+        <div class="chips" id="chips" role="group" aria-labelledby="catLabel"></div>
+      </div>
+      <div class="filterrow">
+        <span class="chips__label" id="ammoLabel">Munición</span>
+        <div class="chips" id="ammoChips" role="group" aria-labelledby="ammoLabel"></div>
+      </div>
+
+      <div class="summary" id="summary" aria-label="Resumen de los tiers S y A"></div>
+
+      <div class="statusline">
+        <span class="coverage" id="coverage"></span>
+        <span class="live" id="live" data-state="off"><span class="live__dot" aria-hidden="true"></span><span id="liveText" class="live__text">Recarga automática: comprobando</span></span>
+        <span class="statusline__meta" id="brandMeta">Project Zomboid</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" tabindex="-1">
+    <div id="tiers"></div>
+
+    <section class="panel" id="mapa" aria-labelledby="mapa-t">
+      <h2 id="mapa-t">Zonas en el mapa</h2>
+      <p id="mapIntro"></p>
+      <ul class="zones" id="zones"></ul>
+    </section>
+
+    <section class="panel" id="hipotesis" aria-labelledby="hipotesis-t">
+      <h2 id="hipotesis-t">Hipótesis revisadas</h2>
+      <p>Datos de partida que no se dieron por buenos, contrastados con los ficheros del juego instalado.</p>
+      <ul class="hypo" id="hypo"></ul>
+    </section>
+
+    <section class="panel" id="metodo" aria-labelledby="metodo-t">
+      <h2 id="metodo-t">Método y fuentes</h2>
+      <div id="method"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p id="footnote"></p>
+  </footer>
+
+  <script src="data.js" id="dataScript"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const CATS = [
+      { id: 'all', label: 'Todas', match: () => true },
+      { id: 'pistolas', label: 'Pistolas', match: c => c === 'pistola' },
+      { id: 'revolveres', label: 'Revólveres', match: c => c === 'revolver' },
+      { id: 'rifles', label: 'Rifles', match: c => c === 'rifle' },
+      { id: 'carabinas', label: 'Carabinas', match: c => c === 'carabina' },
+      { id: 'auto', label: 'Automáticas', match: c => c === 'automatica' },
+      { id: 'escopetas', label: 'Escopetas', match: c => c === 'escopeta' },
+    ];
+    const CAT_LABEL = { pistola: 'Pistola', revolver: 'Revólver', rifle: 'Rifle', carabina: 'Carabina', automatica: 'Automática', escopeta: 'Escopeta' };
+    const TIERS = [
+      { id: 'S', caption: 'Lo mejor de su clase', sub: 'Sin pegas graves salvo encontrarla.' },
+      { id: 'A', caption: 'Muy buena', sub: 'Con una pega clara.' },
+      { id: 'B', caption: 'Útil en su nicho', sub: 'Buena en un papel concreto.' },
+      { id: 'C', caption: 'Limitada', sub: 'Mejor otra si la tienes.' },
+    ];
+    const SCALE = { dmg: 2.2, range: 40, noise: 200 };
+
+    // ---------- Estado: hash de la URL (sobrevive a recargas) + almacenamiento local ----------
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+    };
+    const state = { cat: 'all', ammo: 'all', q: '', compact: false };
+    function readHash() {
+      const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      if (p.has('cat') && CATS.some(c => c.id === p.get('cat'))) state.cat = p.get('cat');
+      if (p.has('ammo')) state.ammo = p.get('ammo');
+      if (p.has('q')) state.q = p.get('q');
+      if (p.has('compact')) state.compact = p.get('compact') === '1';
+      else state.compact = store.get('pz-compact') === '1';
+    }
+    function writeHash() {
+      const p = new URLSearchParams();
+      if (state.cat !== 'all') p.set('cat', state.cat);
+      if (state.ammo !== 'all') p.set('ammo', state.ammo);
+      if (state.q) p.set('q', state.q);
+      if (state.compact) p.set('compact', '1');
+      const h = p.toString();
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+      store.set('pz-compact', state.compact ? '1' : '0');
+    }
+
+    // ---------- Utilidades ----------
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const fmt = n => n == null ? '—' : Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 });
+    const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const shortName = w => w.short || w.name;
+    const pct = (v, max) => Math.max(0, Math.min(100, (v / max) * 100));
+    // Solo interesa la traducción si cambia el modelo (M1A frente a M14), no el orden de las palabras
+    const TYPE_WORDS = new Set('rifle fusil pistol pistola revolver revólver shotgun escopeta carbine carabina assault tactical táctica táctico de del sawed-off recortada double barrel doble cañón toy juguete cap round trapper trampero canon tactica tactico'.split(' '));
+    const tokens = s => new Set(norm(s).replace(/[()]/g, ' ').split(/\s+/).filter(x => x && !TYPE_WORDS.has(x)));
+    const modelDiffers = (a, b) => { const A = tokens(a), B = tokens(b); return A.size !== B.size || [...A].some(x => !B.has(x)); };
+    const MAP_BASE = 'https://pzmap.org/';
+    const mapUrl = room => MAP_BASE + (room ? '?room=' + encodeURIComponent(room) : '');
+    // Abre o reutiliza una única ventana del mapa. pzmap.org no se deja incrustar en un iframe.
+    // Se conserva el vínculo con la ventana (opener) porque sin él el navegador no deja reutilizarla.
+    function openMap(url) {
+      const w = window.open(url, 'pzmap', 'popup=yes,width=1400,height=900');
+      if (w) { w.focus(); return true; }
+      return false;
+    }
+    const dmg = n => n == null ? '—' : Number(n).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+    const dmgRange = s => `${dmg(s.dmgMin)}–${dmg(s.dmgMax)}`;
+
+    // Las armas de juguete (fulminantes, daño 0) quedan fuera de la vista: solo se muestran armas de fuego.
+    function data() {
+      const d = window.PZ_DATA || { meta: {}, weapons: [], sources: {}, hypotheses: [] };
+      return { ...d, weapons: d.weapons.filter(w => w.category !== 'juguete') };
+    }
+
+    function visible(w) {
+      const cat = CATS.find(c => c.id === state.cat) || CATS[0];
+      if (!cat.match(w.category)) return false;
+      if (state.ammo !== 'all' && w.stats.ammoId !== state.ammo) return false;
+      if (!state.q) return true;
+      const q = norm(state.q);
+      return [w.name, w.nameEn, w.short, w.id, CAT_LABEL[w.category], w.stats.ammo].some(x => norm(x).includes(q));
+    }
+
+    // ---------- Render ----------
+    function renderChips() {
+      $('#chips').innerHTML = CATS.map(c =>
+        `<button type="button" class="chip" data-cat="${c.id}" aria-pressed="${state.cat === c.id}">${esc(c.label)} <span class="chip__n num">${data().weapons.filter(w => c.match(w.category)).length}</span></button>`).join('');
+    }
+
+    // Un botón por munición, con el icono de su caja; las armas sin esa munición se ocultan.
+    const ammoLabel = name => { const t = String(name || '').replace(/^Cartuchos?\s+(de\s+)?/i, ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+    function ammoTypes() {
+      const by = new Map();
+      for (const w of data().weapons) {
+        const id = w.stats.ammoId;
+        if (!id) continue;
+        if (!by.has(id)) by.set(id, { id, name: w.stats.ammo, icon: boxIcon(w), n: 0 });
+        by.get(id).n++;
+      }
+      return [...by.values()].sort((a, b) => b.n - a.n || ammoLabel(a.name).localeCompare(ammoLabel(b.name), 'es'));
+    }
+    function renderAmmoChips() {
+      const types = ammoTypes();
+      if (state.ammo !== 'all' && !types.some(t => t.id === state.ammo)) state.ammo = 'all';
+      $('#ammoChips').innerHTML = `<button type="button" class="chip" data-ammo="all" aria-pressed="${state.ammo === 'all'}">Toda</button>` +
+        types.map(t => `<button type="button" class="chip chip--ammo" data-ammo="${esc(t.id)}" aria-pressed="${state.ammo === t.id}" title="${esc(t.name)}">${t.icon ? `<img class="mini-icon" src="${esc(t.icon)}" alt="" width="32" height="32" loading="lazy">` : ''}${esc(ammoLabel(t.name))} <span class="chip__n num">${t.n}</span></button>`).join('');
+    }
+
+    function renderSummary() {
+      const ws = data().weapons;
+      $('#summary').innerHTML = ['S', 'A'].map(t => {
+        const items = ws.filter(w => w.tier === t);
+        return `<div class="summary__row" data-tier="${t}">
+          <span class="summary__letter" aria-label="Tier ${t}">${t}</span>
+          <ul class="summary__list">${items.map(w => `<li><a href="#w-${esc(w.id)}" data-jump="${esc(w.id)}" title="${esc(w.name)}: ${esc(w.reason)}"><img class="mini-icon" src="${esc(w.icon)}" alt="" width="32" height="32" loading="lazy">${esc(shortName(w))}</a></li>`).join('')}</ul>
+        </div>`;
+      }).join('');
+    }
+
+    function renderCoverage() {
+      const d = data();
+      const tiered = d.weapons.filter(w => ['S', 'A', 'B', 'C'].includes(w.tier));
+      const total = d.meta.realFirearms ?? d.weapons.length;
+      const ok = tiered.length === total && total > 0;
+      const shown = d.weapons.filter(visible).length;
+      $('#coverage').innerHTML = `<strong>${tiered.length} de ${total}</strong> armas de fuego del juego con tier${ok ? '' : ' (faltan armas)'}<span class="coverage__extra"> · mostrando ${shown}</span>`;
+    }
+
+    function meter(label, v, max, text, from = 0) {
+      const left = pct(from, max), width = Math.max(2, pct(v, max) - left);
+      return `<div class="meter"><dt>${label}</dt><dd><div class="meter__track" aria-hidden="true"><div class="meter__fill" style="left:${left}%;width:${width}%"></div></div></dd><dd class="meter__value num">${text}</dd></div>`;
+    }
+
+    function srcItem(r) {
+      return `<li><span><span class="w num">peso ${fmt(r.w)}</span> · ${esc(r.name)} <span class="path">(${esc(r.kind)})</span></span><span class="path"><code>${esc(r.file)}:${r.line}</code></span></li>`;
+    }
+
+    // Dibujos del juego de la munición del arma: cartucho suelto, caja, cartón y cargador (los que existan)
+    // Dibujo principal: la caja de munición de colores del juego (si no hay caja, el cartucho suelto)
+    const ORDER = { 'Caja': 0, 'Suelta': 1, 'Cartón': 2, 'Cargador': 3 };
+    function boxIcon(w) {
+      const items = w.ammoItems || [];
+      const box = items.find(a => a.role === 'Caja' && a.icon) || items.find(a => a.icon);
+      return box ? box.icon : null;
+    }
+    function ammoStrip(w) {
+      if (!w.ammoItems || !w.ammoItems.length) return '';
+      const items = [...w.ammoItems].sort((a, b) => (ORDER[a.role] ?? 9) - (ORDER[b.role] ?? 9));
+      const sub = a => a.contains ? `${a.contains.n} ${a.role === 'Cartón' ? 'cajas' : 'unidades'}` : a.capacity ? `${a.capacity} balas` : '';
+      return `<div class="ammo"><span class="where__label">Munición en el juego</span><ul class="ammo__list">${items.map(a => {
+        const tip = `${a.name}${a.contains ? ` · contiene ${a.contains.n} × ${a.contains.of}` : ''}${a.capacity ? ` · capacidad ${a.capacity}` : ''}`;
+        return `<li class="ammo__item" title="${esc(tip)}">
+          <span class="ammo__icon">${a.icon ? `<img src="${esc(a.icon)}" alt="" width="32" height="32" loading="lazy">` : ''}</span>
+          <span class="ammo__role">${esc(a.role)}</span>${sub(a) ? `<span class="ammo__sub num">${esc(sub(a))}</span>` : ''}
+          <span class="sr-only">: ${esc(tip)}</span>
+        </li>`; }).join('')}</ul></div>`;
+    }
+
+    function card(w) {
+      const s = w.stats, r = w.rarity, d = data();
+      const tier = w.tier || '—';
+      const alias = w.nameEn && modelDiffers(w.name, w.nameEn) ? `En inglés: ${esc(w.nameEn)}. La traducción española del juego no está actualizada.` : '';
+      const cap = s.capacity + (s.magazine ? ' (cargador)' : '');
+      const zomb = w.zombies.length
+        ? `<p class="label-sub">Zombis que pueden llevarla</p><ul class="srclist">${w.zombies.map(z => `<li><span><span class="w num">${fmt(z.chance)} %</span> · ${esc(z.outfits.join(', '))}${z.more ? ` y ${z.more} más` : ''}</span><span class="path"><code>media/lua/shared/Definitions/AttachedWeaponDefinitions.lua:${z.line}</code> (${esc(z.def)})</span></li>`).join('')}</ul>`
+        : '<p class="label-sub">Ningún zombi la lleva encima según AttachedWeaponDefinitions.lua.</p>';
+      const community = w.community.length
+        ? w.community.map(c => {
+            const src = d.sources[c.src] || {};
+            return `<blockquote class="quote"><p${c.original ? ` title="Original en inglés: ${esc(c.original)}"` : ''}>${esc(c.text)}${c.original ? ' <span class="tr-mark">(traducido del inglés)</span>' : ''}</p>${c.check ? `<p class="check">Contraste con la 42.21: ${esc(c.check)}</p>` : ''}<cite><a href="${esc(src.url)}" target="_blank" rel="noopener noreferrer" title="Título original: ${esc(src.titleOriginal || src.title)}">${esc(src.title)}</a> · versión ${esc(src.version)}</cite></blockquote>`;
+          }).join('')
+        : '<p>Sin valoración de la comunidad verificada.</p>';
+
+      return `<article class="card" id="w-${esc(w.id)}" data-tier="${esc(w.tier || 'toy')}" style="--tier-color: var(--tier-${w.tier || 'C'})" aria-labelledby="n-${esc(w.id)}">
+        <div class="card__head">
+          <div class="icon-tile"><img class="card__icon" src="${esc(w.icon)}" alt="Icono de ${esc(w.name)} en el juego" width="32" height="32"></div>
+          <div class="card__title">
+            <h3 class="card__name" id="n-${esc(w.id)}">${esc(w.name)}</h3>
+            ${alias ? `<p class="card__alias">${alias}</p>` : ''}
+            ${w.iconShared && w.iconShared.length ? `<p class="card__alias">Mismo icono en el juego que ${esc(w.iconShared.map(o => (d.weapons.find(x => x.id === o) || {}).name || o).join(', '))}</p>` : ''}
+          </div>
+          <span class="badge" role="img" aria-label="${w.tier ? 'Tier ' + tier : 'Sin tier'}">${tier}</span>
+        </div>
+        <div class="tags">
+          <span class="tag">${esc(CAT_LABEL[w.category])}</span>
+          <span class="tag tag--rarity" data-level="${esc(r.level)}">${esc(r.level)}</span>
+          ${r.militaryScore && r.score < 20 ? '<span class="tag">Sobre todo militar</span>' : ''}
+        </div>
+        <p class="card__reason">${esc(w.reason)}</p>
+        ${w.mapRooms && w.mapRooms.length ? `<div class="where"><span class="where__label">Dónde buscar</span><ul class="where__list">${w.mapRooms.slice(0, 4).map(r => `<li><a class="where__link" href="${mapUrl(r.room)}" target="pzmap" data-map title="Ver las ${r.count} habitaciones de este tipo en pzmap.org (peso de botín ${fmt(r.w)})">${esc(r.label)}</a></li>`).join('')}</ul></div>` : ''}
+        <dl class="meters">
+          ${meter('Daño', s.dmgMax, SCALE.dmg, dmgRange(s), s.dmgMin)}
+          ${meter('Alcance', s.range, SCALE.range, fmt(s.range))}
+          ${meter('Ruido', s.noise, SCALE.noise, fmt(s.noise))}
+        </dl>
+        ${ammoStrip(w)}
+        <dl class="facts">
+          <div class="fact"><dt>Munición</dt><dd class="fact__ammo">${boxIcon(w) ? `<img class="mini-icon mini-icon--ammo" src="${esc(boxIcon(w))}" alt="" width="32" height="32" loading="lazy">` : ''}<span>${esc(s.ammo)}</span></dd></div>
+          <div class="fact"><dt>Capacidad</dt><dd class="num">${esc(cap)}</dd></div>
+          <div class="fact" data-compact-hide><dt>Recarga</dt><dd>${esc(s.reload)}</dd></div>
+          <div class="fact" data-compact-hide><dt>Modo de disparo</dt><dd>${esc(s.fireMode)}</dd></div>
+          <div class="fact" data-compact-hide><dt>Precisión base</dt><dd class="num">${fmt(s.hitChance)}</dd></div>
+          <div class="fact" data-compact-hide><dt title="Peso en el inventario">Carga</dt><dd class="num">${fmt(s.weight)}</dd></div>
+          <div class="fact fact--compact"><dt>Daño</dt><dd class="num">${dmgRange(s)}</dd></div>
+          <div class="fact fact--compact"><dt>Alcance</dt><dd class="num">${fmt(s.range)}</dd></div>
+          <div class="fact fact--compact"><dt>Ruido</dt><dd class="num">${fmt(s.noise)}</dd></div>
+          <div class="fact fact--compact"><dt>Rareza</dt><dd>${esc(r.level)}</dd></div>
+        </dl>
+
+        <details class="more">
+          <summary>Datos del juego (${esc(d.meta.version)})</summary>
+          <div class="more__body">
+            <dl class="kv">
+              <dt>Daño mínimo / máximo</dt><dd class="num">${dmg(s.dmgMin)} / ${dmg(s.dmgMax)}</dd>
+              <dt>Alcance máximo</dt><dd class="num">${fmt(s.range)}</dd>
+              <dt>Radio de ruido</dt><dd class="num">${fmt(s.noise)}</dd>
+              <dt title="Campo del script: HitChance">Precisión base</dt><dd class="num">${fmt(s.hitChance)}</dd>
+              <dt>Probabilidad de crítico</dt><dd class="num">${fmt(s.crit)}</dd>
+              <dt>Tiempo de apuntado</dt><dd class="num">${fmt(s.aimTime)}</dd>
+              <dt title="Campo del script: RecoilDelay">Retroceso</dt><dd class="num">${fmt(s.recoil)}</dd>
+              <dt title="Campo del script: JamGunChance">Probabilidad de encasquillarse</dt><dd class="num">${fmt(s.jam)}</dd>
+              <dt>Atraviesa objetivos</dt><dd>${s.pierce ? 'Sí' : 'No'}</dd>
+              <dt>Objetivos por disparo</dt><dd class="num">${fmt(s.maxHit)}</dd>
+              ${s.pellets > 1 ? `<dt>Perdigones</dt><dd class="num">${fmt(s.pellets)}</dd>` : ''}
+              ${s.spread != null ? `<dt>Dispersión</dt><dd class="num">${fmt(s.spread)}</dd>` : ''}
+              <dt title="Campo del script: MaxAmmo">Capacidad</dt><dd class="num">${fmt(s.capacity)}</dd>
+              ${s.magazine ? `<dt>Cargador</dt><dd>${esc(s.magazine)}</dd>` : ''}
+              ${s.legacyClipSize != null && s.legacyClipSize !== s.capacity ? `<dt title="Campo del script: ClipSize">Tamaño de cargador heredado (no se usa)</dt><dd class="num">${fmt(s.legacyClipSize)}</dd>` : ''}
+              <dt title="Peso en el inventario">Carga</dt><dd class="num">${fmt(s.weight)}</dd>
+              <dt>Recarga</dt><dd>${esc(s.reload)}</dd>
+            </dl>
+            <p class="path">Objeto <code>Base.${esc(w.id)}</code> en <code>${esc(w.file)}:${w.line}</code>. Nombre en <code>${esc(w.nameFile)}</code>. Icono <code>${esc(w.iconName)}</code> extraído de <code>${esc(w.iconPack)}</code>.</p>
+            ${(w.ammoItems || []).map(a => `<p class="path">${esc(a.role)}: ${esc(a.name)}${a.contains ? `, contiene ${a.contains.n} × ${esc(a.contains.of)} (<code>${esc(a.contains.src)}</code>)` : ''}${a.capacity ? `, capacidad ${a.capacity}` : ''}. Objeto <code>${esc(a.file)}:${a.line}</code>${a.iconName ? `, icono <code>${esc(a.iconName)}</code>` : ''}.</p>`).join('')}
+          </div>
+        </details>
+
+        <details class="more">
+          <summary>Rareza y botín</summary>
+          <div class="more__body">
+            <p style="margin:0"><strong style="color:var(--ink)">${esc(r.level)}</strong>: suma de pesos no militares <span class="num">${fmt(r.score)}</span> en ${r.sourceCount} fuentes. ${esc(r.military)}</p>
+            ${r.sources.length ? `<p class="label-sub">Fuentes principales</p><ul class="srclist">${r.sources.map(srcItem).join('')}</ul>` : ''}
+            ${r.stash.length ? `<p class="label-sub">Alijos y escondites (aleatorios, fuera del cálculo)</p><ul class="srclist">${r.stash.map(srcItem).join('')}</ul>` : ''}
+            ${r.militarySources.length ? `<p class="label-sub">Fuentes militares</p><ul class="srclist">${r.militarySources.map(srcItem).join('')}</ul>` : ''}
+            ${r.guaranteed.length ? `<p class="label-sub">Contenedores que la traen siempre</p><ul class="srclist">${r.guaranteed.map(srcItem).join('')}</ul>` : ''}
+            ${zomb}
+          </div>
+        </details>
+
+        <details class="more">
+          <summary>Valoración de la comunidad</summary>
+          <div class="more__body">
+            <p class="note-subjective">Opinión subjetiva de terceros, de otras versiones del juego. No forma parte de los datos.</p>
+            ${community}
+          </div>
+        </details>
+      </article>`;
+    }
+
+    function renderTiers() {
+      const ws = data().weapons;
+      $('#tiers').innerHTML = TIERS.map(t => {
+        const list = ws.filter(w => w.tier === t.id);
+        const shown = list.filter(visible);
+        return `<section class="tier-group" data-tier="${t.id}" aria-labelledby="t-${t.id}">
+          <div class="tier-mark"><div class="tier-mark__inner">
+            <h2 class="tier-letter" id="t-${t.id}"><span class="sr-only">Tier </span>${t.id}</h2>
+            <p class="tier-caption"><strong>${esc(t.caption)}</strong>${esc(t.sub)}<span class="tier-count num">${shown.length === list.length ? `${list.length} armas` : `${shown.length} de ${list.length} visibles`}</span></p>
+          </div></div>
+          <div class="cards">${shown.length ? shown.map(card).join('') : '<p class="empty-tier">Ninguna arma de este tier coincide con el filtro.</p>'}</div>
+        </section>`;
+      }).join('');
+    }
+
+    function renderStatic() {
+      const d = data(), m = d.meta;
+      const mp = m.map || {};
+      $('#mapIntro').innerHTML = `El mapa interactivo es <a href="${MAP_BASE}" target="pzmap" data-map>pzmap.org</a>, de la comunidad, con datos de la versión ${esc(mp.version)}; el panel usa la ${esc(m.version)}. No se puede incrustar aquí porque el sitio lo bloquea, así que se abre en su propia ventana y la reutiliza. Para ver iconos de armerías, hospitales y demás, pulsa la primera vez el botón en inglés <strong>Enable spoilers</strong> («activar spoilers», es decir, mostrar lo que revela el mapa) y confirma con <strong>Yes</strong> («sí»): tu navegador lo recuerda. Cada botón marca todas las habitaciones de ese tipo; el número es de habitaciones, no de edificios.`;
+      $('#zones').innerHTML = (d.zones || []).map(z => `<li><a class="zone" href="${mapUrl(z.room)}" target="pzmap" data-map><span>${esc(z.label)}</span><span class="zone__n num">${z.count}</span></a></li>`).join('');
+      $('#brandMeta').textContent = `Versión ${m.version} · consultado el ${m.consulted}`;
+      $('#hypo').innerHTML = (d.hypotheses || []).map(h => `<li><div><p class="hypo__claim">${esc(h.claim)}</p><span class="hypo__verdict">${esc(h.verdict)}</span></div><p class="hypo__detail">${esc(h.detail)}</p></li>`).join('');
+      const srcs = Object.values(d.sources || {});
+      $('#method').innerHTML = `
+        <p>Versión comprobada: <strong>${esc(m.version)}</strong> (revisión ${esc(m.revision)}), rama estable de Steam. Fuente de la versión: ${esc(m.versionSource)}. Fecha de consulta: ${esc(m.consulted)}.</p>
+        <p>Catálogo: se recorrieron todos los scripts de <code>${esc(m.scriptsScanned)}</code> buscando objetos con <code>Ranged = true</code>. Salen ${m.rangedFound}: ${m.realFirearms} armas de fuego reales y ${m.toys} juguetes con la etiqueta de arma falsa. Todas las cifras de las tarjetas se leen de esos scripts, con su fichero y línea.</p>
+        <p>Rareza: ${esc(m.rarityRule)}</p>
+        <p>Tier: valoración propia de este panel a partir de los datos del juego. S es lo mejor de su clase, A muy buena con una pega clara, B útil en su nicho y C limitada. No es oficial ni definitivo.</p>
+        <p>Valoración de la comunidad, siempre aparte y subjetiva:</p>
+        <ul class="sources">${srcs.map(s => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>. ${esc(s.where)} Versión ${esc(s.version)}.</li>`).join('')}</ul>`;
+      $('#footnote').textContent = `Datos de Project Zomboid ${m.version} leídos de los ficheros del juego instalado el ${m.consulted}. Sin mods. Tier y valoraciones son subjetivos.`;
+    }
+
+    function renderAll() {
+      document.body.dataset.compact = String(state.compact);
+      $('#compactBtn').setAttribute('aria-pressed', String(state.compact));
+      $('#q').value = state.q;
+      renderChips(); renderAmmoChips(); renderSummary(); renderCoverage(); renderTiers(); renderStatic();
+      renderPip();
+    }
+
+    // ---------- Eventos ----------
+    document.addEventListener('click', e => {
+      const ml = e.target.closest('a[data-map]');
+      if (ml && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+        if (openMap(ml.href)) e.preventDefault();
+        return;
+      }
+      const chip = e.target.closest('[data-cat]');
+      if (chip) { state.cat = chip.dataset.cat; writeHash(); renderChips(); renderCoverage(); renderTiers(); return; }
+      const ammoChip = e.target.closest('[data-ammo]');
+      if (ammoChip) { state.ammo = ammoChip.dataset.ammo; writeHash(); renderAmmoChips(); renderCoverage(); renderTiers(); return; }
+      const jump = e.target.closest('[data-jump]');
+      if (jump) {
+        const w = data().weapons.find(x => x.id === jump.dataset.jump);
+        if (w && !visible(w)) { state.cat = 'all'; state.ammo = 'all'; state.q = ''; writeHash(); renderAll(); }
+        e.preventDefault();
+        const el = document.getElementById('w-' + jump.dataset.jump);
+        if (el) { el.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.querySelector('summary')?.focus({ preventScroll: true }); }
+      }
+    });
+    let qTimer;
+    $('#q').addEventListener('input', e => {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => { state.q = e.target.value.trim(); writeHash(); renderCoverage(); renderTiers(); }, 120);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement !== $('#q') && !e.target.closest('input, textarea')) { e.preventDefault(); $('#q').focus(); }
+      if (e.key === 'Escape' && document.activeElement === $('#q') && state.q) { state.q = ''; $('#q').value = ''; writeHash(); renderCoverage(); renderTiers(); }
+    });
+    $('#compactBtn').addEventListener('click', () => { state.compact = !state.compact; writeHash(); document.body.dataset.compact = String(state.compact); $('#compactBtn').setAttribute('aria-pressed', String(state.compact)); });
+
+    // Tema: oscuro por defecto; el botón fija claro u oscuro y se recuerda
+    function currentTheme() {
+      const t = document.documentElement.dataset.theme;
+      if (t) return t;
+      return matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t;
+      $('#themeLabel').textContent = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro';
+      $('#themeBtn').setAttribute('aria-label', currentTheme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+    }
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { applyTheme(null); renderPip(); });
+    $('#themeBtn').addEventListener('click', () => { const t = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pz-theme', t); applyTheme(t); renderPip(); });
+
+    // Altura de la cabecera para la letra fija del tier
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', $('#topbar').offsetHeight + 'px'));
+    ro.observe($('#topbar'));
+
+    // ---------- Recarga automática de data.js sin perder el filtro ----------
+    let lastText = null;
+    const live = $('#live'), liveText = $('#liveText');
+    // La página y los estilos también se vigilan: si cambian, se recarga entera (el filtro va en la URL).
+    const lastOther = {};
+    async function pageChanged() {
+      for (const f of ['index.html', 'styles.css']) {
+        const r = await fetch(f, { cache: 'no-store' });
+        if (!r.ok) continue;
+        const tx = await r.text();
+        if (lastOther[f] !== undefined && tx !== lastOther[f]) return true;
+        lastOther[f] = tx;
+      }
+      return false;
+    }
+    async function poll() {
+      try {
+        if (await pageChanged()) { location.reload(); return; }
+        const res = await fetch('data.js', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        if (lastText !== null && text !== lastText) {
+          const s = document.createElement('script');
+          s.textContent = text;
+          document.head.appendChild(s);
+          s.remove();
+          renderAll();
+          live.dataset.state = 'flash';
+          liveText.textContent = 'Datos actualizados ' + new Date().toLocaleTimeString('es-ES');
+          setTimeout(() => { live.dataset.state = 'on'; }, 1500);
+        } else if (lastText === null) {
+          live.dataset.state = 'on';
+          liveText.textContent = 'Recarga automática activa';
+        }
+        lastText = text;
+      } catch {
+        live.dataset.state = 'off';
+        liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+        return; // sin servidor no se insiste
+      }
+      setTimeout(poll, document.hidden ? 10000 : 2000);
+    }
+
+    // ---------- Ventana flotante (Document Picture-in-Picture, solo Chromium) ----------
+    let pipWin = null;
+    function renderPip() {
+      if (!pipWin || pipWin.closed) return;
+      const doc = pipWin.document;
+      doc.documentElement.dataset.theme = currentTheme();
+      const ws = data().weapons;
+      doc.body.innerHTML = `<main><div class="pip-list">${['S', 'A', 'B'].map(t => `<div class="pip-row summary__row" data-tier="${t}"><span class="summary__letter">${t}</span><ul class="summary__list">${ws.filter(w => w.tier === t).map(w => `<li><a title="${esc(w.reason)}"><img class="mini-icon" src="${new URL(w.icon, location.href).href}" alt="" width="32" height="32">${esc(shortName(w))}</a></li>`).join('')}</ul></div>`).join('')}</div></main>`;
+    }
+    if ('documentPictureInPicture' in window) {
+      const btn = $('#pipBtn');
+      btn.hidden = false;
+      btn.addEventListener('click', async () => {
+        try {
+          pipWin = await window.documentPictureInPicture.requestWindow({ width: 380, height: 300 });
+          document.querySelectorAll('link[rel="stylesheet"]').forEach(l => {
+            const n = pipWin.document.createElement('link'); n.rel = 'stylesheet'; n.href = l.href; pipWin.document.head.appendChild(n);
+          });
+          pipWin.document.title = 'Tier';
+          pipWin.document.body.className = 'pip';
+          renderPip();
+        } catch { pipWin = null; /* sin soporte o bloqueado: la ventana --app sigue sirviendo */ }
+      });
+    }
+
+    window.addEventListener('hashchange', () => {
+      const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      if (!p.has('cat') && !p.has('q') && !p.has('compact')) return; // ancla a una tarjeta
+      state.cat = 'all'; state.ammo = 'all'; state.q = ''; readHash(); renderAll();
+    });
+
+    // ---------- Arranque ----------
+    readHash();
+    const savedTheme = store.get('pz-theme');
+    applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null);
+    renderAll();
+    if (location.protocol.startsWith('http')) poll();
+    else { liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local'; }
+  })();
+  </script>
+</body>
+</html>

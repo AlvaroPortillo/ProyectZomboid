@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Zomboid · En directo</title>
+  <meta name="description" content="Mapa y estado del personaje en directo con los mods PZ Map y PZ Pulse, para un segundo monitor.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="publicado.js" defer></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C171B'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%235CE1E6' stroke-width='2.4'/%3E%3C/svg%3E">
+</head>
+<body data-page="directo">
+  <header class="topbar topbar--slim" id="topbar">
+    <div class="topbar__inner">
+      <div class="toprow">
+        <div class="brand">
+          <h1>Project Zomboid</h1>
+          <nav class="tabs" aria-label="Secciones">
+            <a class="tab" href="index.html">Armas</a>
+            <a class="tab" href="firearms.html">Armas con mods</a>
+            <a class="tab" href="habilidades.html">Habilidades</a>
+            <a class="tab" href="curacion.html">Curación</a>
+            <a class="tab" href="directo.html" aria-current="page">En directo</a>
+          </nav>
+        </div>
+        <div class="controls" role="group" aria-label="Qué mostrar">
+          <button type="button" class="chip" data-view="both" aria-pressed="true">Mapa y personaje</button>
+          <button type="button" class="chip" data-view="map" aria-pressed="false">Solo mapa</button>
+          <button type="button" class="chip" data-view="pulse" aria-pressed="false">Solo personaje</button>
+          <button type="button" class="btn btn--icon" id="themeBtn" aria-label="Cambiar tema" title="Cambiar tema">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+            <span class="btn__label" id="themeLabel">Tema claro</span>
+          </button>
+        </div>
+      </div>
+      <div class="statusline">
+        <span class="live" id="liveMap" data-state="off"><span class="live__dot" aria-hidden="true"></span><span class="live-label">PZ Map: comprobando</span></span>
+        <span class="live" id="livePulse" data-state="off"><span class="live__dot" aria-hidden="true"></span><span class="live-label">PZ Pulse: comprobando</span></span>
+        <a class="link-quiet" href="#" id="openMap" hidden>Mapa en otra ventana</a>
+        <a class="link-quiet" href="#" id="openPulse" hidden>Personaje en otra ventana</a>
+        <button type="button" class="chip" id="openApp" hidden>Abrir los dos en Edge</button>
+        <span class="link-quiet" id="appNote" role="status"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="live-main" id="contenido">
+    <section class="panel live-help" id="help" hidden></section>
+    <div class="frames" id="frames" data-view="both">
+      <div class="frame frame--map"><iframe id="fMap" title="Mapa en directo (PZ Map)" loading="eager"></iframe></div>
+      <div class="frame frame--pulse"><iframe id="fPulse" title="Estado del personaje en directo (PZ Pulse)" loading="eager"></iframe></div>
+    </div>
+  </main>
+
+  <script>
+  (() => {
+    'use strict';
+    const $ = s => document.querySelector(s);
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+    };
+    const base = location.origin;
+    const URLS = {
+      map: `${base}/live/map/index.html?d=${base}/live/map-data/`,
+      pulse: `${base}/live/pulse/index.html?d=${base}/live/pulse-data/`,
+    };
+
+    // ---------- Vista: mapa, personaje o los dos ----------
+    function setView(v) {
+      $('#frames').dataset.view = v;
+      document.querySelectorAll('[data-view]').forEach(b => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String(b.dataset.view === v)); });
+      store.set('pz-directo-vista', v);
+    }
+    // Cada ventana tiene su nombre, así que pulsar de nuevo la reutiliza en vez de abrir otra.
+    function openWindow(key) {
+      window.open(key === 'openMap' ? URLS.map : URLS.pulse, key, 'popup=yes,width=1200,height=900');
+    }
+    // Una página no puede lanzar programas: se lo pide al servidor del panel, que abre Edge en modo app
+    // igual que Start-Process msedge "--app=.../directo.html", con el mapa y el personaje lado a lado.
+    async function openApp() {
+      const note = $('#appNote');
+      note.textContent = '';
+      try {
+        const r = await fetch('/live/abrir-app', { method: 'POST', headers: { 'X-Panel': '1' } });
+        if (!r.ok) throw new Error(r.status === 405 ? 'reinicia el servidor del panel para activar este botón' : `error ${r.status}`);
+      } catch (err) {
+        note.textContent = `No se pudo abrir la ventana: ${err.message}.`;
+      }
+    }
+    document.addEventListener('click', e => {
+      const b = e.target.closest('button[data-view]');
+      if (b) setView(b.dataset.view);
+      const o = e.target.closest('#openMap, #openPulse');
+      if (o) { e.preventDefault(); openWindow(o.id); }
+      if (e.target.closest('#openApp')) openApp();
+    });
+
+    // ---------- Tema ----------
+    const currentTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t;
+      $('#themeLabel').textContent = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro';
+    }
+    $('#themeBtn').addEventListener('click', () => { const t = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pz-theme', t); applyTheme(t); });
+
+    // ---------- Comprobar que el servidor del panel sirve los mods ----------
+    function help(html) { const h = $('#help'); h.hidden = false; h.innerHTML = html; }
+    async function init() {
+      let st;
+      try {
+        const r = await fetch('/live/estado.json', { cache: 'no-store' });
+        if (!r.ok) throw new Error();
+        st = await r.json();
+      } catch {
+        $('#frames').hidden = true;
+        // Web publicada: los datos de los mods están en el PC de quien juega, no hay servidor que los entregue.
+        if (!['127.0.0.1', 'localhost', ''].includes(location.hostname)) {
+          // display en vez de hidden: el CSS de estos bloques (grid/flex) pisa el atributo hidden
+          [$('#frames'), $('.statusline'), ...document.querySelectorAll('.controls [data-view]')].forEach(el => { el.style.display = 'none'; });
+          help(`<h2>En directo: próximamente</h2>
+            <p>Esta pestaña enseña el mapa y el estado del personaje de tu partida mientras juegas. Los lee de los mods PZ Map y PZ Pulse en tu propio PC, así que por ahora solo funciona con el panel abierto en local (<code>python web/servidor.py</code>).</p>`);
+          return;
+        }
+        help(`<h2>Arranca el panel con su servidor</h2>
+          <p>Esta pestaña necesita el servidor del panel, que además de la web entrega las páginas y los datos de PZ Map y PZ Pulse. Cierra el servidor actual con <kbd>Ctrl+C</kbd> y, desde la raíz del proyecto, ejecuta:</p>
+          <pre><code>python web/servidor.py</code></pre>`);
+        return;
+      }
+      const missing = Object.entries(st.mods).filter(([, v]) => !(v.page && v.data)).map(([k]) => k === 'map' ? 'PZ Map' : 'PZ Pulse');
+      if (missing.length) {
+        help(`<h2>No encuentro ${missing.join(' ni ')}</h2>
+          <p>Suscríbete en el Workshop de Steam, actívalo en el menú de mods del juego y carga una partida una vez: el mod deja en <code>%USERPROFILE%\\Zomboid\\Lua</code> el aviso con la dirección de su página. Después reinicia el servidor del panel.</p>`);
+      }
+      if (st.mods.map.page && st.mods.map.data) { $('#fMap').src = URLS.map; $('#openMap').hidden = false; } else $('#frames').dataset.noMap = '1';
+      if (st.mods.pulse.page && st.mods.pulse.data) { $('#fPulse').src = URLS.pulse; $('#openPulse').hidden = false; } else $('#frames').dataset.noPulse = '1';
+      $('#openApp').hidden = false;
+      watch('map', '/live/map-data/heartbeat.txt', $('#liveMap'), 'PZ Map');
+      watch('pulse', '/live/pulse-data/heartbeat.txt', $('#livePulse'), 'PZ Pulse');
+    }
+
+    // ---------- Latido: ¿el juego está escribiendo datos? ----------
+    function watch(key, url, el, name) {
+      let last = null, lastChange = 0;
+      const label = el.querySelector('.live-label');
+      async function tick() {
+        try {
+          const r = await fetch(url, { cache: 'no-store' });
+          if (!r.ok) throw new Error();
+          const txt = await r.text();
+          const m = /seq:(\d+)/.exec(txt) || /beat:(\d+)/.exec(txt);
+          const v = m ? m[1] : txt;
+          const now = Date.now();
+          if (last !== null && v !== last) lastChange = now;  // solo cuenta un cambio real, no la primera lectura
+          last = v;
+          const fresh = now - lastChange < 8000 && lastChange !== 0;
+          const state = /state:"(\w+)"/.exec(txt);
+          el.dataset.state = fresh ? 'on' : 'off';
+          label.textContent = fresh ? `${name}: en directo${state && state[1] !== 'play' ? ` (${state[1]})` : ''}` : lastChange === 0 ? `${name}: esperando datos de la partida` : `${name}: sin datos nuevos. ¿Está la partida abierta y sin pausa?`;
+        } catch {
+          el.dataset.state = 'off';
+          label.textContent = `${name}: no disponible`;
+        }
+        setTimeout(tick, 3000);
+      }
+      tick();
+    }
+
+    new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
+    const saved = new URLSearchParams(location.search).get('vista') || store.get('pz-directo-vista');
+    setView(['both', 'map', 'pulse'].includes(saved) ? saved : 'both');
+    const savedTheme = store.get('pz-theme');
+    applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null);
+    init();
+  })();
+  </script>
+</body>
+</html>

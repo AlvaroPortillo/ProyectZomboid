@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Curación en Knox</title>
+  <meta name="description" content="Cómo curar cada herida en Project Zomboid 42.21: hemorragias, balas, heridas profundas, fracturas, quemaduras e infección, con datos de los ficheros del juego.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="publicado.js" defer></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C171B'/%3E%3Cpath d='M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z' fill='none' stroke='%235CE1E6' stroke-width='2'/%3E%3C/svg%3E">
+</head>
+<body data-page="curacion">
+  <a class="skip" href="#contenido">Saltar a la guía</a>
+
+  <header class="topbar" id="topbar">
+    <div class="topbar__inner">
+      <div class="toprow">
+        <div class="brand">
+          <h1>Project Zomboid</h1>
+          <nav class="tabs" aria-label="Secciones">
+            <a class="tab" href="index.html">Armas</a>
+            <a class="tab" href="firearms.html">Armas con mods</a>
+            <a class="tab" href="habilidades.html">Habilidades</a>
+            <a class="tab" href="curacion.html" aria-current="page">Curación</a>
+            <a class="tab" href="directo.html">En directo</a>
+          </nav>
+        </div>
+        <label class="search">
+          <span class="sr-only">Buscar herida u objeto</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+          <input type="search" id="q" placeholder="Herida u objeto (pulsa /)" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="controls" role="group" aria-label="Opciones de vista">
+          <button class="btn btn--icon" type="button" id="themeBtn" aria-label="Cambiar tema" title="Cambiar tema">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+            <span class="btn__label" id="themeLabel">Tema claro</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="filterrow">
+        <span class="chips__label" id="groupLabel">Tipo</span>
+        <div class="chips" id="chips" role="group" aria-labelledby="groupLabel"></div>
+      </div>
+
+      <div class="statusline">
+        <span class="coverage" id="coverage"></span>
+        <span class="live" id="live" data-state="off"><span class="live__dot" aria-hidden="true"></span><span id="liveText" class="live__text">Recarga automática: comprobando</span></span>
+        <span class="statusline__meta" id="brandMeta"></span>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" tabindex="-1">
+    <section class="heal-rule" id="regla" aria-labelledby="regla-t"></section>
+
+    <div class="cards heal-cards" id="injuries"></div>
+
+    <section class="panel" id="botiquin" aria-labelledby="botiquin-t">
+      <h2 id="botiquin-t">Qué sirve para cada cura</h2>
+      <p>Lo que acepta el menú de curación del juego. Si un objeto no está aquí, el menú no lo ofrece para esa cura.</p>
+      <div class="kit" id="kit"></div>
+    </section>
+
+    <section class="panel" id="fabricar" aria-labelledby="fabricar-t">
+      <h2 id="fabricar-t">Fabricar material</h2>
+      <p>Recetas de la categoría Medicina. La duración está en las unidades del juego, igual que en Habilidades.</p>
+      <ul class="heal-recipes" id="recipes"></ul>
+    </section>
+
+    <section class="panel" id="medicina" aria-labelledby="medicina-t">
+      <h2 id="medicina-t">Qué cambia con el nivel de Medicina</h2>
+      <ul class="bullets" id="doctor"></ul>
+    </section>
+
+    <section class="panel" id="metodo" aria-labelledby="metodo-t">
+      <h2 id="metodo-t">Método y fuentes</h2>
+      <div id="method"></div>
+    </section>
+  </main>
+
+  <footer><p id="footnote"></p></footer>
+
+  <script src="curacion.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const DATA_FILE = 'curacion.js';
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const fmt = n => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 });
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+    };
+    const data = () => window.PZ_HEAL || { meta: {}, rule: { order: [] }, groups: [], injuries: [], kit: [], recipes: [], doctor: [], sources: [] };
+    const SEVERITY = { leve: 'Leve', media: 'Media', grave: 'Grave', mortal: 'Mortal' };
+
+    // ---------- Estado en la URL ----------
+    const state = { group: 'all', q: '' };
+    function readHash() {
+      const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      state.group = data().groups.some(g => g.id === p.get('tipo')) ? p.get('tipo') : 'all';
+      state.q = p.get('q') || '';
+      $('#q').value = state.q;
+    }
+    function writeHash() {
+      const p = new URLSearchParams();
+      if (state.group !== 'all') p.set('tipo', state.group);
+      if (state.q) p.set('q', state.q);
+      const h = p.toString();
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+    }
+
+    function haystack(w) {
+      return norm([w.name, ...w.panel, w.what, ...w.steps.flatMap(s => [s.t, s.d, ...(s.items || [])])].join(' '));
+    }
+    function visible(w) {
+      if (state.group !== 'all' && w.group !== state.group) return false;
+      return !state.q || haystack(w).includes(norm(state.q));
+    }
+
+    // ---------- Render ----------
+    function renderRule() {
+      const r = data().rule;
+      $('#regla').innerHTML = `
+        <div class="heal-rule__head">
+          <h2 id="regla-t">${esc(r.title)}</h2>
+          <p>${esc(r.text)}</p>
+        </div>
+        <ol class="heal-order">${r.order.map(o => `<li><strong>${esc(o.t)}</strong><span>${esc(o.d)}</span></li>`).join('')}</ol>
+        <p class="path">Sale de <code>${esc(r.src)}</code>.</p>`;
+    }
+
+    function renderChips() {
+      const d = data();
+      $('#chips').innerHTML = d.groups.map(g => {
+        const n = g.id === 'all' ? d.injuries.length : d.injuries.filter(w => w.group === g.id).length;
+        return `<button type="button" class="chip" data-group="${g.id}" aria-pressed="${state.group === g.id}">${esc(g.label)} <span class="chip__n num">${n}</span></button>`;
+      }).join('');
+    }
+
+    function stepHtml(s) {
+      const items = (s.items || []).map(i => `<li class="tag">${esc(i)}</li>`).join('');
+      return `<li><span class="step__t">${esc(s.t)}</span><span class="step__d">${esc(s.d || '')}</span>${items ? `<ul class="tags step__items" aria-label="Qué necesitas">${items}</ul>` : ''}</li>`;
+    }
+
+    function card(w) {
+      return `<article class="card heal-card" id="h-${esc(w.id)}" data-severity="${esc(w.severity)}" aria-labelledby="n-${esc(w.id)}">
+        <div class="heal-card__head">
+          <div>
+            <h3 class="card__name" id="n-${esc(w.id)}">${esc(w.name)}</h3>
+            <p class="card__alias">En el panel de salud: ${w.panel.map(p => `«${esc(p)}»`).join(' o ')}</p>
+          </div>
+          <span class="sev" data-severity="${esc(w.severity)}">${esc(SEVERITY[w.severity])}</span>
+        </div>
+        <p class="card__reason">${esc(w.what)}</p>
+        <ol class="heal-steps">${w.steps.map(stepHtml).join('')}</ol>
+        ${w.tip ? `<p class="heal-tip"><strong>Consejo:</strong> ${esc(w.tip)}</p>` : ''}
+        ${w.community ? `<p class="heal-tip heal-tip--community"><strong>Dato de la comunidad:</strong> ${esc(w.community)}</p>` : ''}
+        <details class="more">
+          <summary>Lo que dice el juego</summary>
+          <div class="more__body">
+            <dl class="kv">${w.facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+            <p class="path">Fuente: ${w.src.map(s => `<code>${esc(s)}</code>`).join(', ')}. Las duraciones están en unidades del juego.</p>
+          </div>
+        </details>
+      </article>`;
+    }
+
+    function renderInjuries() {
+      const list = data().injuries.filter(visible);
+      $('#injuries').innerHTML = list.length ? list.map(card).join('')
+        : `<p class="empty-tier">Ninguna herida coincide con «${esc(state.q)}». Prueba con el nombre que sale en el panel de salud, como «Fractura», o con un objeto, como «pinzas».</p>`;
+      const total = data().injuries.length;
+      $('#coverage').innerHTML = `<strong>${total} heridas</strong> con su cura${list.length === total ? '' : ` · mostrando ${list.length}`}`;
+    }
+
+    function renderStatic() {
+      const d = data(), m = d.meta;
+      $('#kit').innerHTML = d.kit.map(k => `<section class="kit__group" aria-labelledby="k-${k.id}">
+        <h3 id="k-${k.id}">${esc(k.title)}</h3>
+        <p class="kit__rule">${esc(k.rule)}</p>
+        <ul class="kit__list">${k.items.map(i => `<li><span class="kit__name">${esc(i.n)}</span>${i.v != null ? `<span class="kit__v num" title="Potencia de vendaje">${fmt(i.v)}</span>` : ''}${i.note ? `<span class="kit__note">${esc(i.note)}</span>` : ''}</li>`).join('')}</ul>
+      </section>`).join('');
+      $('#recipes').innerHTML = d.recipes.map(r => `<li>
+        <span class="heal-recipe__n">${esc(r.n)}${r.learn ? ' <span class="tag tag--learn">Hay que aprenderla</span>' : ''}</span>
+        <span class="heal-recipe__io"><span class="muted">Necesitas</span> ${esc(r.in)}</span>
+        <span class="heal-recipe__io"><span class="muted">Obtienes</span> ${esc(r.out)}</span>
+        <span class="muted num">duración ${r.t}</span>
+      </li>`).join('');
+      $('#doctor').innerHTML = d.doctor.map(t => `<li>${esc(t)}</li>`).join('');
+      $('#brandMeta').textContent = `Versión ${m.version} · consultado el ${m.consulted}`;
+      $('#method').innerHTML = `
+        <p>Las reglas salen del código del juego instalado (versión <strong>${esc(m.version)}</strong>), no de guías. Qué opción aparece en el menú de curación y con qué objetos: <code>${esc(m.panelFile)}</code>. Duración, dolor y experiencia de cada cura: los ficheros de <code>${esc(m.actionsDir)}</code>. Recetas: <code>${esc(m.recipesFile)}</code>. Qué líquidos desinfectan: <code>${esc(m.fluidsFiles)}</code>. Qué hacen las cataplasmas y los antibióticos: los textos oficiales de <code>${esc(m.tooltipFile)}</code>.</p>
+        <p>La gravedad de cada herida, el orden de las tarjetas y los consejos son valoración propia de este panel. Cuánto tarda en curarse cada herida lo calcula el motor del juego en Java y no está en estos ficheros, por eso no aparece.</p>
+        <p>Dato externo, aparte y sin comprobar en los ficheros:</p>
+        <ul class="sources">${d.sources.map(s => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>. ${esc(s.where)} Versión ${esc(s.version)}.</li>`).join('')}</ul>`;
+      $('#footnote').textContent = `Datos de Project Zomboid ${m.version} leídos de los ficheros del juego instalado el ${m.consulted}. Sin mods.`;
+    }
+
+    function render() { renderRule(); renderChips(); renderInjuries(); renderStatic(); }
+
+    // ---------- Eventos ----------
+    document.addEventListener('click', e => {
+      const chip = e.target.closest('[data-group]');
+      if (chip) { state.group = chip.dataset.group; writeHash(); renderChips(); renderInjuries(); }
+    });
+    window.addEventListener('hashchange', () => { readHash(); renderChips(); renderInjuries(); });
+    let qTimer;
+    $('#q').addEventListener('input', e => {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => { state.q = e.target.value.trim(); writeHash(); renderInjuries(); }, 120);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement !== $('#q') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); $('#q').focus(); }
+      if (e.key === 'Escape' && document.activeElement === $('#q') && state.q) { state.q = ''; $('#q').value = ''; writeHash(); renderInjuries(); }
+    });
+
+    // ---------- Tema ----------
+    const currentTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t;
+      const next = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro';
+      $('#themeLabel').textContent = next;
+      $('#themeBtn').setAttribute('aria-label', 'Cambiar a ' + next.toLowerCase());
+      $('#themeBtn').title = 'Cambiar a ' + next.toLowerCase();
+    }
+    $('#themeBtn').addEventListener('click', () => { const t = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pz-theme', t); applyTheme(t); });
+
+    // ---------- Recarga automática (datos: repinta; página o estilos: recarga) ----------
+    const last = {};
+    const live = $('#live'), liveText = $('#liveText');
+    async function poll() {
+      try {
+        for (const f of [DATA_FILE, 'curacion.html', 'styles.css']) {
+          const res = await fetch(f, { cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (last[f] !== undefined && text !== last[f]) {
+            if (f !== DATA_FILE) { location.reload(); return; }
+            const sc = document.createElement('script'); sc.textContent = text; document.head.appendChild(sc); sc.remove();
+            render();
+            live.dataset.state = 'flash'; liveText.textContent = 'Datos actualizados ' + new Date().toLocaleTimeString('es-ES');
+            setTimeout(() => { live.dataset.state = 'on'; }, 1500);
+          }
+          last[f] = text;
+        }
+        if (live.dataset.state === 'off') { live.dataset.state = 'on'; liveText.textContent = 'Recarga automática activa'; }
+      } catch {
+        live.dataset.state = 'off'; liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+        return;
+      }
+      setTimeout(poll, document.hidden ? 10000 : 2000);
+    }
+
+    new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
+    readHash();
+    const savedTheme = store.get('pz-theme');
+    applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null);
+    render();
+    if (location.protocol.startsWith('http')) poll();
+    else liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+  })();
+  </script>
+</body>
+</html>
