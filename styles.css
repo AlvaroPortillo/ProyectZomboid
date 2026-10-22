@@ -617,6 +617,15 @@ body.pip .summary__list { flex-wrap: wrap; overflow: visible; padding-right: 0; 
 .tab[aria-current="page"] { color: var(--bg); background: var(--ink); }
 /* «En directo» en la web publicada (publicado.js): no es un enlace */
 .tab--soon, .tab--soon:hover { color: var(--ink-3); background: none; cursor: default; gap: var(--s2); }
+/* Enlace a la portada de proyectos (publicado.js, solo en la web publicada) */
+.brand__proyectos {
+  display: inline-flex; align-items: center; gap: var(--s2); align-self: center;
+  min-height: 32px; padding: 0 var(--s3); border-radius: var(--r-chip); border: 1px solid var(--line);
+  color: var(--ink-2); font-size: 0.8125rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+.brand__proyectos:hover { color: var(--ink); border-color: var(--line-strong); }
+.brand__proyectos svg { width: 13px; height: 13px; fill: currentColor; flex: none; }
 .tab__soon { font-size: 0.6875rem; font-weight: 600; padding: 2px var(--s2); border-radius: var(--r-chip); border: 1px solid var(--line-strong); color: var(--ink-2); }
 
 /* ---------- Profesiones ---------- */
@@ -921,6 +930,7 @@ body[data-page="directo"] { overflow-x: hidden; }
   .toprow:first-child { flex-wrap: wrap; }
   .brand { display: contents; }
   .brand h1 { order: 0; flex: 1 1 auto; }
+  .brand__proyectos { order: 0; }
   .controls { order: 1; }
   .tabs { order: 2; flex: 1 1 100%; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
