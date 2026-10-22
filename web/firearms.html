@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Armas con mods</title>
+  <meta name="description" content="Daño, munición y rareza de todas las armas de fuego de Project Zomboid 42.21 con el mod Firearms B42, ordenadas por tier.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="publicado.js" defer></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C171B'/%3E%3Ctext x='16' y='23' font-family='Arial Black,Arial' font-weight='900' font-size='20' text-anchor='middle' fill='none' stroke='%235CE1E6' stroke-width='1.6'%3ES%3C/text%3E%3C/svg%3E">
+</head>
+<body data-page="firearms">
+  <a class="skip" href="#contenido">Saltar a las armas</a>
+
+  <header class="topbar" id="topbar">
+    <div class="topbar__inner">
+      <div class="toprow">
+        <div class="brand">
+          <h1>Project Zomboid</h1>
+          <nav class="tabs" aria-label="Secciones">
+            <a class="tab" href="index.html">Armas</a>
+            <a class="tab" href="firearms.html" aria-current="page">Armas con mods</a>
+            <a class="tab" href="habilidades.html">Habilidades</a>
+            <a class="tab" href="curacion.html">Curación</a>
+            <a class="tab" href="directo.html">En directo</a>
+          </nav>
+        </div>
+        <label class="search">
+          <span class="sr-only">Buscar arma o munición</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+          <input type="search" id="q" placeholder="Buscar arma o munición (pulsa /)" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="controls" role="group" aria-label="Opciones de vista">
+          <button class="btn btn--icon" type="button" id="themeBtn" aria-label="Cambiar tema" title="Cambiar tema">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+            <span class="btn__label" id="themeLabel">Tema claro</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="filterrow">
+        <span class="chips__label" id="catLabel">Tipo</span>
+        <div class="chips" id="chips" role="group" aria-labelledby="catLabel"></div>
+      </div>
+      <div class="filterrow">
+        <span class="chips__label" id="ammoLabel">Munición</span>
+        <div class="chips" id="ammoChips" role="group" aria-labelledby="ammoLabel"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" tabindex="-1">
+    <div id="tiers"></div>
+
+    <details class="more modinfo">
+      <summary>Notas sobre el mod y las fuentes</summary>
+      <div class="more__body" id="notes"></div>
+    </details>
+  </main>
+
+  <script src="firearms-data.js"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const CATS = [
+      { id: 'all', label: 'Todas', match: () => true },
+      { id: 'pistolas', label: 'Pistolas', match: c => c === 'pistola' },
+      { id: 'revolveres', label: 'Revólveres', match: c => c === 'revolver' },
+      { id: 'subfusiles', label: 'Subfusiles', match: c => c === 'subfusil' },
+      { id: 'auto', label: 'Fusiles automáticos', match: c => c === 'automatica' },
+      { id: 'rifles', label: 'Rifles', match: c => c === 'rifle' },
+      { id: 'carabinas', label: 'Carabinas', match: c => c === 'carabina' },
+      { id: 'escopetas', label: 'Escopetas', match: c => c === 'escopeta' },
+    ];
+    const TIERS = [
+      { id: 'S', caption: 'Lo mejor de su clase' },
+      { id: 'A', caption: 'Muy buena' },
+      { id: 'B', caption: 'Útil en su nicho' },
+      { id: 'C', caption: 'Limitada' },
+      { id: 'X', letter: '×', caption: 'No se consiguen' },
+    ];
+    const DMG_MAX = 3.5;
+
+    // ---------- Estado en la URL (sobrevive a recargas) ----------
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+    };
+    const state = { cat: 'all', ammo: 'all', q: '' };
+    function readHash() {
+      const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      if (p.has('cat') && CATS.some(c => c.id === p.get('cat'))) state.cat = p.get('cat');
+      if (p.has('ammo')) state.ammo = p.get('ammo');
+      if (p.has('q')) state.q = p.get('q');
+    }
+    function writeHash() {
+      const p = new URLSearchParams();
+      if (state.cat !== 'all') p.set('cat', state.cat);
+      if (state.ammo !== 'all') p.set('ammo', state.ammo);
+      if (state.q) p.set('q', state.q);
+      const h = p.toString();
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+    }
+
+    // ---------- Utilidades ----------
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const dmg = n => Number(n).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+    const pct = v => Math.max(0, Math.min(100, (v / DMG_MAX) * 100));
+    const tierOf = w => w.tier || 'X';
+    const data = () => window.PZ_MODS || { meta: { mod: {} }, weapons: [], ammo: [], findings: [] };
+    const ammoLabel = name => { const t = String(name || '').replace(/^Cartuchos?\s+(de\s+)?/i, '').replace(/\s+Round$/i, ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+    const boxIcon = items => { const b = (items || []).find(a => a.role === 'Caja' && a.icon) || (items || []).find(a => a.icon); return b ? b.icon : null; };
+    const rarityText = w => w.tier ? w.rarity.level : 'No se consigue';
+
+    function visible(w) {
+      const cat = CATS.find(c => c.id === state.cat) || CATS[0];
+      if (!cat.match(w.category)) return false;
+      if (state.ammo !== 'all' && w.stats.ammoId !== state.ammo) return false;
+      if (!state.q) return true;
+      const q = norm(state.q);
+      return [w.name, w.nameReal, w.short, w.stats.ammo, w.stats.ammoEn].some(x => norm(x).includes(q));
+    }
+
+    // ---------- Render ----------
+    function renderChips() {
+      const ws = data().weapons;
+      $('#chips').innerHTML = CATS.map(c =>
+        `<button type="button" class="chip" data-cat="${c.id}" aria-pressed="${state.cat === c.id}">${esc(c.label)} <span class="chip__n num">${ws.filter(w => c.match(w.category)).length}</span></button>`).join('');
+      const types = data().ammo.map(a => ({ ...a, n: ws.filter(w => w.stats.ammoId === a.id).length })).sort((a, b) => b.n - a.n);
+      if (state.ammo !== 'all' && !types.some(t => t.id === state.ammo)) state.ammo = 'all';
+      $('#ammoChips').innerHTML = `<button type="button" class="chip" data-ammo="all" aria-pressed="${state.ammo === 'all'}">Toda</button>` +
+        types.map(t => `<button type="button" class="chip chip--ammo" data-ammo="${esc(t.id)}" aria-pressed="${state.ammo === t.id}">${boxIcon(t.items) ? `<img class="mini-icon" src="${esc(boxIcon(t.items))}" alt="" width="32" height="32" loading="lazy">` : ''}${esc(ammoLabel(t.name))} <span class="chip__n num">${t.n}</span></button>`).join('');
+    }
+
+    function row(w) {
+      const s = w.stats, left = pct(s.dmgMin), width = Math.max(2, pct(s.dmgMax) - left);
+      const name = w.nameReal || w.name;
+      return `<tr id="w-${esc(w.id)}" title="${esc(w.reason)}">
+        <th scope="row" class="wt__name">
+          <span class="wt__icon">${w.icon ? `<img src="${esc(w.icon)}" alt="" width="32" height="32" loading="lazy">` : ''}</span>
+          <span>${esc(name)}${w.name && w.name !== name ? `<span class="wt__alias">En el juego: ${esc(w.name)}</span>` : ''}</span>
+        </th>
+        <td class="wt__dmg"><span class="wt__bar" aria-hidden="true"><span style="left:${left}%;width:${width}%"></span></span><span class="num">${dmg(s.dmgMin)}–${dmg(s.dmgMax)}</span></td>
+        <td class="wt__ammo">${boxIcon(w.ammoItems) ? `<img class="mini-icon" src="${esc(boxIcon(w.ammoItems))}" alt="" width="32" height="32" loading="lazy">` : ''}${esc(ammoLabel(s.ammo))}</td>
+        <td class="wt__rar"><span class="tag tag--rarity" data-level="${esc(rarityText(w))}">${esc(rarityText(w))}</span></td>
+      </tr>`;
+    }
+
+    function renderTiers() {
+      const ws = data().weapons;
+      const html = TIERS.map(t => {
+        const shown = ws.filter(w => tierOf(w) === t.id && visible(w)).sort((a, b) => b.stats.dmgMax - a.stats.dmgMax || b.stats.dmgMin - a.stats.dmgMin);
+        if (!shown.length) return '';
+        return `<section class="tier-group tier-group--rows" data-tier="${t.id}" aria-labelledby="t-${t.id}">
+          <div class="tier-mark"><div class="tier-mark__inner">
+            <h2 class="tier-letter" id="t-${t.id}">${t.letter ? `<span aria-hidden="true">${t.letter}</span>` : t.id}<span class="sr-only"> ${t.letter ? '' : 'tier: '}${esc(t.caption)}</span></h2>
+            <p class="tier-caption" aria-hidden="true">${esc(t.caption)}</p>
+          </div></div>
+          <table class="wt">
+            <thead><tr><th scope="col">Arma</th><th scope="col">Daño</th><th scope="col">Munición</th><th scope="col">Rareza</th></tr></thead>
+            <tbody>${shown.map(row).join('')}</tbody>
+          </table>
+        </section>`;
+      }).join('');
+      $('#tiers').innerHTML = html || '<p class="empty-tier">Ninguna arma coincide con el filtro.</p>';
+    }
+
+    function renderNotes() {
+      const d = data(), m = d.meta, mod = m.mod || {}, v = m.variants || [];
+      $('#notes').innerHTML = `
+        <p>Datos de Project Zomboid ${esc(m.version)} con <a href="${esc(mod.url)}" target="_blank" rel="noopener noreferrer">${esc(mod.name)}</a> ${esc(mod.version)}. Vale también para ${esc((v[1] || {}).name)}, que tiene las mismas cifras. Con ${esc((v[2] || {}).name)} las armas son las del juego base: usa la pestaña Armas. El tier es valoración propia; pasa el ratón por un arma para ver el motivo.</p>
+        <p class="label-sub">Fallos del mod</p>
+        <ul class="sources">${(d.findings || []).map(f => `<li>${esc(f.claim)} <strong>${esc(f.verdict)}.</strong> ${esc(f.detail)}</li>`).join('')}</ul>`;
+    }
+
+    function render() { renderChips(); renderTiers(); }
+
+    // ---------- Eventos ----------
+    document.addEventListener('click', e => {
+      const chip = e.target.closest('[data-cat]');
+      if (chip) { state.cat = chip.dataset.cat; writeHash(); render(); return; }
+      const ammoChip = e.target.closest('[data-ammo]');
+      if (ammoChip) { state.ammo = ammoChip.dataset.ammo; writeHash(); render(); }
+    });
+    let qTimer;
+    $('#q').addEventListener('input', e => {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => { state.q = e.target.value.trim(); writeHash(); renderTiers(); }, 120);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement !== $('#q') && !e.target.closest('input, textarea')) { e.preventDefault(); $('#q').focus(); }
+      if (e.key === 'Escape' && document.activeElement === $('#q') && state.q) { state.q = ''; $('#q').value = ''; writeHash(); renderTiers(); }
+    });
+    // La fila de munición va en una línea: la rueda del ratón la desplaza en horizontal
+    document.addEventListener('wheel', e => {
+      const r = e.target.closest('#ammoChips');
+      if (!r || r.scrollWidth <= r.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const max = r.scrollWidth - r.clientWidth;
+      if ((e.deltaY < 0 && r.scrollLeft <= 0) || (e.deltaY > 0 && r.scrollLeft >= max)) return;
+      e.preventDefault();
+      r.scrollLeft += e.deltaY;
+    }, { passive: false });
+
+    // Tema: oscuro por defecto; el botón fija claro u oscuro y se recuerda
+    function currentTheme() {
+      return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    }
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t;
+      $('#themeLabel').textContent = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro';
+      $('#themeBtn').setAttribute('aria-label', currentTheme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+    }
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => applyTheme(null));
+    $('#themeBtn').addEventListener('click', () => { const t = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pz-theme', t); applyTheme(t); });
+
+    // Altura de la cabecera para la letra fija del tier
+    new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
+
+    // ---------- Recarga automática silenciosa: si cambian los datos o la página, se repinta ----------
+    const last = {};
+    async function poll() {
+      try {
+        for (const f of ['firearms.html', 'styles.css', 'firearms-data.js']) {
+          const tx = await (await fetch(f, { cache: 'no-store' })).text();
+          if (last[f] !== undefined && tx !== last[f]) {
+            if (f !== 'firearms-data.js') { location.reload(); return; }
+            const s = document.createElement('script'); s.textContent = tx; document.head.appendChild(s); s.remove();
+            render(); renderNotes();
+          }
+          last[f] = tx;
+        }
+      } catch { return; } // sin servidor no se insiste
+      setTimeout(poll, document.hidden ? 10000 : 2000);
+    }
+
+    window.addEventListener('hashchange', () => { state.cat = 'all'; state.ammo = 'all'; state.q = ''; readHash(); $('#q').value = state.q; render(); });
+
+    // ---------- Arranque ----------
+    readHash();
+    $('#q').value = state.q;
+    const saved = store.get('pz-theme');
+    applyTheme(saved === 'light' || saved === 'dark' ? saved : null);
+    render(); renderNotes();
+    if (location.protocol.startsWith('http')) poll();
+  })();
+  </script>
+</body>
+</html>

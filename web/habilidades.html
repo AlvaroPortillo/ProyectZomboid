@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Habilidades de Knox</title>
+  <meta name="description" content="Guía de fabricación y construcción por habilidad de Project Zomboid 42.21, con datos extraídos de los scripts del juego.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="publicado.js" defer></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C171B'/%3E%3Ctext x='16' y='23' font-family='Arial Black,Arial' font-weight='900' font-size='20' text-anchor='middle' fill='none' stroke='%235CE1E6' stroke-width='1.6'%3EH%3C/text%3E%3C/svg%3E">
+</head>
+<body data-compact="false" data-page="habilidades">
+  <a class="skip" href="#contenido">Saltar a la guía</a>
+
+  <header class="topbar" id="topbar">
+    <div class="topbar__inner">
+      <div class="toprow">
+        <div class="brand">
+          <h1>Project Zomboid</h1>
+          <nav class="tabs" aria-label="Secciones">
+            <a class="tab" href="index.html">Armas</a>
+            <a class="tab" href="firearms.html">Armas con mods</a>
+            <a class="tab" href="habilidades.html" aria-current="page">Habilidades</a>
+            <a class="tab" href="curacion.html">Curación</a>
+            <a class="tab" href="directo.html">En directo</a>
+          </nav>
+        </div>
+        <label class="search">
+          <span class="sr-only">Buscar receta o construcción</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+          <input type="search" id="q" placeholder="Buscar receta (pulsa /)" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="controls" role="group" aria-label="Opciones de vista">
+          <button class="btn btn--icon" type="button" id="compactBtn" aria-pressed="false" title="Vista compacta">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+            <span class="btn__label">Compacto</span>
+          </button>
+          <button class="btn btn--icon" type="button" id="themeBtn" aria-label="Cambiar tema" title="Cambiar tema">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+            <span class="btn__label" id="themeLabel">Tema claro</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="filterrow">
+        <span class="chips__label" id="groupLabel">Grupo</span>
+        <div class="chips" id="chips" role="group" aria-labelledby="groupLabel"></div>
+      </div>
+
+      <div class="skillbar" id="skillbar" role="group" aria-label="Elegir habilidad"></div>
+
+      <div class="statusline">
+        <span class="coverage" id="coverage"></span>
+        <span class="live" id="live" data-state="off"><span class="live__dot" aria-hidden="true"></span><span id="liveText" class="live__text">Recarga automática: comprobando</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" tabindex="-1">
+    <section id="results" class="panel results" hidden aria-live="polite"></section>
+    <article id="detail" class="skill-detail"></article>
+
+    <section class="panel" id="metodo" aria-labelledby="metodo-t">
+      <h2 id="metodo-t">Método y fuentes</h2>
+      <div id="method"></div>
+    </section>
+  </main>
+
+  <footer><p id="footnote"></p></footer>
+
+  <script src="habilidades.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const DATA_FILE = 'habilidades.js';
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const fmt = n => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 });
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+    };
+    const data = () => window.PZ_SKILLS || { meta: {}, recipes: [], skills: [] };
+    const skillById = id => data().skills.find(s => s.id === id);
+    const nameOf = id => (skillById(id) || {}).name || id;
+
+    // ---------- Estado en la URL ----------
+    const state = { group: 'all', skill: 'Woodwork', q: '', kind: 'all', free: false, compact: false };
+    function readHash() {
+      const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      if (p.get('h') && skillById(p.get('h'))) state.skill = p.get('h');
+      state.group = p.get('grupo') || 'all';
+      state.q = p.get('q') || '';
+      state.kind = ['c', 'f'].includes(p.get('tipo')) ? p.get('tipo') : 'all';
+      state.free = p.get('libres') === '1';
+      state.compact = p.has('compact') ? p.get('compact') === '1' : store.get('pz-compact') === '1';
+    }
+    function writeHash() {
+      const p = new URLSearchParams();
+      p.set('h', state.skill);
+      if (state.group !== 'all') p.set('grupo', state.group);
+      if (state.q) p.set('q', state.q);
+      if (state.kind !== 'all') p.set('tipo', state.kind);
+      if (state.free) p.set('libres', '1');
+      if (state.compact) p.set('compact', '1');
+      history.replaceState(null, '', '#' + p.toString());
+      store.set('pz-compact', state.compact ? '1' : '0');
+    }
+
+    // ---------- Piezas de interfaz ----------
+    function chipsHtml() {
+      const groups = [...new Set(data().skills.map(s => s.group))];
+      return [['all', 'Todas'], ...groups.map(g => [g, g])].map(([id, label]) => {
+        const n = id === 'all' ? data().skills.length : data().skills.filter(s => s.group === id).length;
+        return `<button type="button" class="chip" data-group="${esc(id)}" aria-pressed="${state.group === id}">${esc(label)} <span class="chip__n num">${n}</span></button>`;
+      }).join('');
+    }
+    function skillbarHtml() {
+      return data().skills.filter(s => state.group === 'all' || s.group === state.group).map(s =>
+        `<button type="button" class="skillpick" data-skill="${esc(s.id)}" aria-pressed="${state.skill === s.id}">
+          <span class="skillpick__name">${esc(s.name)}</span><span class="skillpick__n num">${s.counts.total ? `${s.counts.total} recetas` : 'sin recetas'}</span>
+        </button>`).join('');
+    }
+
+    const itemList = arr => arr.map(x => {
+      const label = x.label || (x.names || []).join(' o ');
+      const examples = x.label && x.names && x.names.length ? `Valen: ${x.names.join(', ')}${x.more ? ` y ${x.more} más` : ''}` : '';
+      const q = x.q != null ? `<span class="num qty">${fmt(x.q)}${x.unit ? ' L' : ''}</span> ${x.uses ? `uso${x.q === 1 ? '' : 's'} de ` : ''}` : '';
+      return `<li${examples ? ` class="has-examples" title="${esc(examples)}"` : ''}>${q}${esc(label)}${examples ? `<span class="sr-only">. ${esc(examples)}</span>` : ''}</li>`;
+    }).join('');
+
+    function learnInfo(r) {
+      if (!r.need) return r.auto ? `<p class="learn learn--auto">Se aprende sola al llegar a ${esc(r.auto)}.</p>` : '<p class="learn learn--free">No hay que aprenderla: basta con el nivel.</p>';
+      const by = r.by && r.by.length ? `Se aprende con: ${r.by.map(esc).join(', ')}.` : 'Hay que aprenderla.';
+      const auto = r.auto ? ` También se aprende sola al llegar a ${esc(r.auto)}.` : '';
+      return `<p class="learn learn--need">${by}${auto}</p>`;
+    }
+
+    function recipeRow(i, sid) {
+      const r = data().recipes[i];
+      const others = Object.entries(r.lv).filter(([k]) => k !== sid);
+      const xp = Object.entries(r.xp).map(([k, v]) => `${nameOf(k)} +${v}`).join(', ');
+      return `<details class="rrow" id="r-${i}">
+        <summary>
+          <span class="rrow__name">${esc(r.n)}${r.own ? ' <span class="tr-mark">(traducción propia)</span>' : ''}</span>
+          <span class="rrow__tags">
+            <span class="tag">${r.k === 'c' ? 'Construcción' : 'Fabricación'}</span>
+            ${r.need ? '<span class="tag tag--learn">Hay que aprenderla</span>' : ''}
+            ${xp ? `<span class="tag tag--xp num" title="Experiencia por cada vez">${esc(xp)} EXP</span>` : ''}
+          </span>
+        </summary>
+        <div class="rrow__body">
+          ${others.length ? `<p class="also">También pide: ${others.map(([k, v]) => `${esc(nameOf(k))} ${v}`).join(', ')}.</p>` : ''}
+          <div class="rcols">
+            ${r.tools.length ? `<div><p class="label-sub">Herramientas (no se gastan)</p><ul class="ilist">${itemList(r.tools)}</ul></div>` : ''}
+            ${r.mats.length ? `<div><p class="label-sub">Materiales</p><ul class="ilist">${itemList(r.mats)}</ul></div>` : ''}
+            ${r.out.length ? `<div><p class="label-sub">Resultado</p><ul class="ilist">${r.out.map(o => `<li><span class="num qty">${o.q}</span> ${esc(o.name)}</li>`).join('')}</ul></div>` : ''}
+          </div>
+          ${learnInfo(r)}
+          <p class="path">Duración en el script: <span class="num">${r.t}</span>${r.cat ? ` · categoría ${esc(r.cat)}` : ''} · <code>${esc(r.src)}</code></p>
+        </div>
+      </details>`;
+    }
+
+    function passes(r) {
+      if (state.kind !== 'all' && r.k !== state.kind) return false;
+      if (state.free && r.need) return false;
+      return true;
+    }
+
+    const STATUS = { ok: 'Coincide', parcial: 'En parte', nv: 'No comprobable' };
+    function rulesHtml(d) {
+      const r = d.rules; if (!r) return '';
+      const vals = o => { const v = [...new Set(Object.values(o || {}))]; return v.length === 1 ? String(v[0]) : Object.entries(o).map(([k, x]) => `${k} ${x}`).join(', '); };
+      const tip = s => String(s || '').split('\\n').join(' ').replace(/\s+/g, ' ');
+      return `<details class="more rules"><summary>Cómo funciona la experiencia (verificado en el juego)</summary><div class="more__body">
+        <ul class="bullets">
+          <li><strong>Libros:</strong> cada volumen multiplica la experiencia mientras estás en sus niveles: ×3, ×5, ×8, ×12 y ×16. Puntería, Recarga y Arma de hoja larga usan ×1,5, ×2,5, ×4, ×6 y ×8.</li>
+          <li><strong>${esc(r.media.name)}: ${esc(vals(r.media.values))}</strong> en los modos de juego estándar. «${esc(tip(r.media.tooltip))}»</li>
+          <li><strong>${esc(r.dismantle.name)}: ${esc(vals(r.dismantle.values))}</strong> en los modos de juego estándar. «${esc(r.dismantle.tooltip)}» Con 0, desmantelar muebles no da experiencia en ninguna habilidad salvo Electrónica.</li>
+        </ul>
+        <p class="path">Si tu partida usa ajustes personalizados, estos valores pueden cambiar. Fuentes: <code>${esc(r.bookFile)}</code> y <code>${esc(r.sandboxFiles)}</code>; textos de <code>Translate/ES/Sandbox.json</code>.</p>
+      </div></details>`;
+    }
+
+    function detailHtml() {
+      const d = data(), s = skillById(state.skill);
+      if (!s) return '';
+      const hasRecipes = s.counts.total > 0;
+      const books = s.books.length ? `<ol class="books">${s.books.map(b => `<li><span class="book__name">${esc(b.name)}</span><span class="book__lv num">niveles ${b.from}–${b.to}${b.mult ? ` · EXP ×${fmt(b.mult)}` : ''}</span></li>`).join('')}</ol>
+        <p class="note-subjective">Texto del juego: «Este libro te da un multiplicador de EXP para el nivel %1». El multiplicador de cada volumen sale de <code>${esc(d.rules.bookFile)}</code>. Lee el volumen de tu nivel antes de ponerte a trabajar.</p>` : '<p>Esta habilidad no tiene libros.</p>';
+      const starters = s.starters.length ? `<ol class="steps">${s.starters.map(i => { const r = d.recipes[i]; return `<li><a href="#r-${i}" data-open="${i}">${esc(r.n)}</a> <span class="num muted">+${r.xp[s.id]} EXP · duración ${r.t}${r.lv[s.id] ? ` · nivel ${r.lv[s.id]}` : ' · sin nivel'}</span></li>`; }).join('')}</ol>
+        <p class="note-subjective">Las que más experiencia dan por unidad de tiempo entre las de nivel 0 o 1 que no hay que aprender. Cálculo propio con los datos del script.</p>` : '';
+      const levels = s.levels.map(lv => {
+        const rows = lv.recipes.filter(i => passes(d.recipes[i]));
+        if (!rows.length) return '';
+        return `<section class="lv" aria-labelledby="lv-${lv.level}"><h3 class="lv__title" id="lv-${lv.level}"><span class="lv__n num">${lv.level}</span> ${lv.level === 0 ? 'Nivel 0: no piden nivel y dan experiencia' : `Nivel ${lv.level}`} <span class="muted num">${rows.length}</span></h3>
+          <div class="lv__rows">${rows.map(i => recipeRow(i, s.id)).join('')}</div></section>`;
+      }).join('');
+      return `
+        <header class="skill-head">
+          <h2 class="skill-title">${esc(s.name)}</h2>
+          ${s.desc ? `<p class="skill-desc">${esc(s.desc)} <span class="tr-mark">(descripción oficial)</span></p>` : ''}
+          <div class="tags">
+            <span class="tag">${esc(s.group)}</span>
+            ${hasRecipes ? `<span class="tag num">${s.counts.total} con nivel mínimo</span><span class="tag num">${s.counts.build} construcciones</span><span class="tag num">${s.counts.craft} fabricaciones</span><span class="tag num">${s.counts.learn} hay que aprenderlas</span>` : '<span class="tag">Sin recetas con nivel mínimo</span>'}
+          </div>
+        </header>
+        ${rulesHtml(d)}
+        <div class="skill-grid">
+          <section class="sblock">
+            <h3>Cómo se entrena</h3>
+            <p>${esc(s.howto.text)} <span class="tr-mark">(${s.howto.official ? 'texto oficial del juego' : 'valoración propia'})</span></p>
+            ${s.xpActions && s.xpActions.length ? `<p class="label-sub">Experiencia por acción (código del juego)</p><ul class="books">${s.xpActions.map(a => `<li title="${esc(a.src)}"><span class="book__name">${esc(a.action)}</span><span class="book__lv num">+${a.xp} EXP</span></li>`).join('')}</ul>` : ''}
+          </section>
+          <section class="sblock">
+            <h3>Libros</h3>
+            ${books}
+          </section>
+          ${s.keyTools.length ? `<section class="sblock"><h3>Herramientas que más se usan</h3><ul class="where__list">${s.keyTools.map(x => `<li><span class="trait">${esc(x.name)} <span class="num trait__cost">${x.count}</span></span></li>`).join('')}</ul><p class="note-subjective">El número es en cuántas recetas aparece.</p></section>` : ''}
+          ${s.keyMats.length ? `<section class="sblock"><h3>Materiales que más se usan</h3><ul class="where__list">${s.keyMats.map(x => `<li><span class="trait">${esc(x.name)} <span class="num trait__cost">${x.count}</span></span></li>`).join('')}</ul></section>` : ''}
+          ${starters ? `<section class="sblock sblock--wide"><h3>Cómo empezar</h3>${starters}</section>` : ''}
+          ${s.community && s.community.length ? `<section class="sblock sblock--wide"><h3>Guía de la comunidad</h3>
+            <p class="note-subjective">Consejos de guías de aficionados, de otras versiones del juego, traducidos del inglés. Al lado de cada uno, si coincide con los datos de la 42.21.</p>
+            <ul class="tips">${s.community.map(c => { const src = d.communitySources[c.src] || {}; const st = STATUS[c.status] || STATUS.nv;
+              return `<li class="tip"><p class="tip__text">${esc(c.text)}</p>
+                <p class="tip__check"><span class="tag tip__status tip__status--${esc(c.status)}">${st}</span> ${esc(c.check.replace(/^(Coincide|En parte|Solo en parte)[:.]\s*/, ''))}</p>
+                <cite><a href="${esc(src.url)}" target="_blank" rel="noopener noreferrer" title="Título original: ${esc(src.titleOriginal || src.title)}">${esc(src.title)}</a> · versión ${esc(src.version)}</cite></li>`; }).join('')}</ul></section>` : ''}
+        </div>
+        ${s.levels.length ? `<section class="unlocks">
+          <div class="unlocks__head">
+            <h3>Qué desbloqueas por nivel</h3>
+            <div class="seg" role="group" aria-label="Tipo">
+              ${[['all', 'Todo'], ['c', 'Construcción'], ['f', 'Fabricación']].map(([id, l]) => `<button type="button" class="chip" data-kind="${id}" aria-pressed="${state.kind === id}">${l}</button>`).join('')}
+              <button type="button" class="chip" data-free aria-pressed="${state.free}">Solo las que no hay que aprender</button>
+            </div>
+          </div>
+          ${levels || '<p class="empty-tier">Ninguna receta coincide con estos filtros.</p>'}
+        </section>` : ''}`;
+    }
+
+    function resultsHtml() {
+      const d = data(), q = norm(state.q);
+      const hits = [];
+      d.recipes.forEach((r, i) => { if (norm(r.n).includes(q)) hits.push(i); });
+      const shown = hits.slice(0, 80);
+      return `<h2>Resultados para «${esc(state.q)}» <span class="muted num">${hits.length}</span></h2>
+        ${hits.length ? `<ul class="hits">${shown.map(i => { const r = d.recipes[i]; const lv = Object.entries(r.lv); const main = lv[0] ? lv[0][0] : Object.keys(r.xp)[0];
+          return `<li><button type="button" class="hit" data-goto="${esc(main)}" data-open="${i}"><span>${esc(r.n)}</span><span class="muted">${lv.length ? lv.map(([k, v]) => `${esc(nameOf(k))} ${v}`).join(', ') : `Sin nivel · da EXP de ${esc(nameOf(main))}`} · ${r.k === 'c' ? 'Construcción' : 'Fabricación'}</span></button></li>`; }).join('')}</ul>
+          ${hits.length > shown.length ? `<p class="muted">Se muestran ${shown.length}. Afina la búsqueda para ver el resto.</p>` : ''}`
+        : '<p>No hay recetas con ese nombre. Prueba con otra palabra, por ejemplo «mesa» o «cuchillo».</p>'}`;
+    }
+
+    function renderStatic() {
+      const m = data().meta;
+      $('#method').innerHTML = `
+        <p>Versión comprobada: <strong>${esc(m.version)}</strong>. Fecha de consulta: ${esc(m.consulted)}. Se han leído ${m.recipes} recetas y construcciones que piden nivel o dan experiencia de alguna habilidad, de ${m.files.map(f => `<code>${esc(f)}</code>`).join(', ')}.</p>
+        <p>«Nivel» es el nivel mínimo de la habilidad (campo SkillRequired). «EXP» es la experiencia que da cada vez (xpAward). «Hay que aprenderla» corresponde a NeedToBeLearn; las fuentes son las revistas y libros que la enseñan (LearnedRecipes) y las profesiones o rasgos que la conceden. «Se aprende sola» corresponde a AutoLearnAll y AutoLearnAny.</p>
+        <p>La duración es el valor del script, sin convertir a segundos. En objetos de uso gradual, como el soplete o las varillas para soldar (tipo «drainable» en el script), la cantidad se muestra como usos: es una interpretación, porque el script solo da el número.</p>
+        <p>Nombres: traducción oficial del juego al castellano (carpeta <code>Translate/ES</code>). Las herramientas y materiales que valen por categoría llevan un nombre genérico propio, y al pasar el ratón se ven los objetos concretos que sirven. Lo que no tiene traducción oficial lleva la marca «traducción propia».</p>
+        <p>Grupos, «Cómo empezar» y los textos marcados como valoración propia no son datos del juego.</p>
+        <p>Guía de la comunidad, siempre aparte y traducida del inglés. Cada consejo se ha contrastado con los datos de la 42.21: «Coincide», «En parte» o «No comprobable» (lo que depende del código Java o de acciones que no son recetas).</p>
+        <ul class="sources">${Object.values(data().communitySources || {}).map(s => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" title="Título original: ${esc(s.titleOriginal)}">${esc(s.title)}</a>. ${esc(s.where)} Versión ${esc(s.version)}.</li>`).join('')}</ul>`;
+      $('#footnote').textContent = `Datos de Project Zomboid ${m.version} leídos de los ficheros del juego instalado el ${m.consulted}. Sin mods.`;
+    }
+
+    function render() {
+      document.body.dataset.compact = String(state.compact);
+      $('#compactBtn').setAttribute('aria-pressed', String(state.compact));
+      $('#q').value = state.q;
+      $('#chips').innerHTML = chipsHtml();
+      $('#skillbar').innerHTML = skillbarHtml();
+      const res = $('#results');
+      if (state.q) { res.hidden = false; res.innerHTML = resultsHtml(); } else { res.hidden = true; res.innerHTML = ''; }
+      $('#detail').innerHTML = detailHtml();
+      const s = skillById(state.skill);
+      $('#coverage').innerHTML = `<strong>${data().skills.length}</strong> habilidades · <strong>${data().recipes.length}</strong> recetas y construcciones<span class="coverage__extra"> · viendo ${esc(s ? s.name : '')}</span>`;
+      renderStatic();
+    }
+
+    function openRecipe(i) {
+      const el = document.getElementById('r-' + i);
+      if (!el) return;
+      el.open = true;
+      el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      el.querySelector('summary').focus({ preventScroll: true });
+    }
+
+    // ---------- Eventos ----------
+    document.addEventListener('click', e => {
+      const g = e.target.closest('[data-group]');
+      if (g) { state.group = g.dataset.group; const list = data().skills.filter(s => state.group === 'all' || s.group === state.group); if (!list.some(s => s.id === state.skill) && list[0]) state.skill = list[0].id; writeHash(); render(); return; }
+      const sk = e.target.closest('[data-skill]');
+      if (sk) { state.skill = sk.dataset.skill; writeHash(); render(); $('#detail').scrollIntoView({ block: 'start' }); return; }
+      const kd = e.target.closest('[data-kind]');
+      if (kd) { state.kind = kd.dataset.kind; writeHash(); render(); return; }
+      if (e.target.closest('[data-free]')) { state.free = !state.free; writeHash(); render(); return; }
+      const go = e.target.closest('[data-goto]');
+      if (go) { state.skill = go.dataset.goto; state.kind = 'all'; state.free = false; state.q = ''; writeHash(); render(); openRecipe(go.dataset.open); return; }
+      const op = e.target.closest('a[data-open]');
+      if (op) { e.preventDefault(); state.kind = 'all'; state.free = false; writeHash(); render(); openRecipe(op.dataset.open); }
+    });
+    let qTimer;
+    $('#q').addEventListener('input', e => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.q = e.target.value.trim(); writeHash(); render(); $('#q').focus(); }, 160); });
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement !== $('#q') && !e.target.closest('input, textarea')) { e.preventDefault(); $('#q').focus(); }
+      if (e.key === 'Escape' && document.activeElement === $('#q') && state.q) { state.q = ''; writeHash(); render(); $('#q').focus(); }
+    });
+    $('#compactBtn').addEventListener('click', () => { state.compact = !state.compact; writeHash(); document.body.dataset.compact = String(state.compact); $('#compactBtn').setAttribute('aria-pressed', String(state.compact)); });
+    window.addEventListener('hashchange', () => { readHash(); render(); });
+
+    const currentTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t;
+      $('#themeLabel').textContent = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro';
+      $('#themeBtn').setAttribute('aria-label', currentTheme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+    }
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => applyTheme(null));
+    $('#themeBtn').addEventListener('click', () => { const t = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pz-theme', t); applyTheme(t); });
+    new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
+
+    // ---------- Recarga automática (datos: repinta; página o estilos: recarga) ----------
+    const last = {};
+    const live = $('#live'), liveText = $('#liveText');
+    async function poll() {
+      try {
+        for (const f of [DATA_FILE, 'habilidades.html', 'styles.css']) {
+          const res = await fetch(f, { cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (last[f] !== undefined && text !== last[f]) {
+            if (f !== DATA_FILE) { location.reload(); return; }
+            const sc = document.createElement('script'); sc.textContent = text; document.head.appendChild(sc); sc.remove();
+            render();
+            live.dataset.state = 'flash'; liveText.textContent = 'Datos actualizados ' + new Date().toLocaleTimeString('es-ES');
+            setTimeout(() => { live.dataset.state = 'on'; }, 1500);
+          }
+          last[f] = text;
+        }
+        if (live.dataset.state === 'off') { live.dataset.state = 'on'; liveText.textContent = 'Recarga automática activa'; }
+      } catch {
+        live.dataset.state = 'off'; liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+        return;
+      }
+      setTimeout(poll, document.hidden ? 10000 : 2000);
+    }
+
+    readHash();
+    const savedTheme = store.get('pz-theme');
+    applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null);
+    render();
+    if (location.protocol.startsWith('http')) poll();
+    else liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+  })();
+  </script>
+</body>
+</html>

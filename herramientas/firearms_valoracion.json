@@ -1,0 +1,62 @@
+{
+  "_nota": "Valoración propia (no son datos del juego). Tier dentro del equilibrio del mod Firearms B42: S lo mejor de su clase, A muy buena con una pega clara, B útil en su nicho, C limitada. tier null = no se puede conseguir.",
+
+  "G3": { "tier": "S", "short": "G3", "reason": "Automática de .308 con daño 1,25–3 y cargador de 20. El mod la mete en los almacenes del ejército con peso 750: en una base militar es casi segura. Pega: fuera de ahí, muy rara." },
+  "M60": { "tier": "S", "short": "M60", "reason": "Cinta de 100 balas de .308, automática y daño 1,25–3: no hay nada con más fuego. Pega: pesa 6 y es de las más raras del mod." },
+  "AssaultRifle": { "tier": "S", "short": "M16A1", "reason": "Automática de 30 balas de 5,56, la munición de fusil más fácil de encontrar, y los zombis militares la llevan a menudo. Pega: muy rara fuera de zonas militares." },
+  "AKM": { "tier": "A", "short": "AKM", "reason": "Automática de 30 balas con daño 1,25–2,75 y la que menos se encasquilla (1). Pega: su 7,62×39 es la munición más escasa del mod." },
+  "M4": { "tier": "A", "short": "M4", "reason": "Mismas cifras que el M16 y algo más ligera (3,3). Pega: retroceso 50, el doble que el M16, así que dispara más despacio." },
+
+  "MP5": { "tier": "A", "short": "MP5A1", "reason": "Subfusil automático de 30 balas de 9 mm, la munición más fácil de encontrar, y apuntado rápido (25). Pega: alcance 18 y muy raro." },
+  "MP5SD": { "tier": "A", "short": "MP5SD", "reason": "Las mismas cifras que el MP5. Ojo: pese a ser la versión silenciada, en el script hace el mismo ruido (radio 100). Pega: la más rara de todas las armas con botín." },
+  "MP510": { "tier": "B", "short": "MP5/10", "reason": "Un MP5 que dispara 10 mm. Pega: el 10 mm es munición del mod y escasea; con 9 mm tienes el MP5." },
+  "Mac10": { "tier": "B", "short": "MAC-10", "reason": "Automática de 30 balas de .45 que cabe en la funda. Pega: no sale en contenedores, solo la llevan algunos zombis, y precisión base 35." },
+
+  "AssaultRifle2": { "tier": "S", "short": "M14", "reason": "El mejor fusil semiautomático: daño 1,25–3, cargador de 20 y alcance 35. Pega: muy raro y se encasquilla más que las automáticas (5)." },
+  "JS14_Rifle": { "tier": "S", "short": "Mini-14", "reason": "Cargador de 20 de 5,56, alcance 35 y poco común: el fusil bueno que sí vas a encontrar. Pega: precisión base 40." },
+  "VarmintRifle": { "tier": "A", "short": "Remington 700", "reason": "Común, 10 balas de 5,56 y alcance 30. Con el mod pasa de ser el peor rifle a uno muy útil. Pega: daño 1–2,75, algo menos que los de .308." },
+  "MSR7T_Rifle": { "tier": "A", "short": "M24", "reason": "El alcance más largo del juego (40) con 10 balas de .308. Pega: muy rara." },
+  "SKS": { "tier": "A", "short": "SKS", "reason": "El daño mínimo más alto de todas las armas (1,75) con 10 balas. Pega: muy rara y su 7,62×39 escasea." },
+  "HuntingRifle": { "tier": "B", "short": "Remington 788", "reason": "Daño 1,25–3, alcance 30 y común. Pega: con el mod solo carga 3 balas." },
+  "M1Garand": { "tier": "B", "short": "M1 Garand", "reason": "El daño máximo más alto (3,25) con peine de 8. Pega: se encasquilla mucho (15) y su .30-06 es munición del mod." },
+  "L94_Rifle": { "tier": "B", "short": "Ruger 77/22", "reason": "Rifle de .22 muy silencioso (radio 60) con alcance 30 y 10 balas: para limpiar sin atraer a la horda. Pega: daño 0,55–1,5." },
+  "HuntingRifle_Sawn": { "tier": "C", "short": "788 recortado", "reason": "Cabe en la funda. Pega: alcance 17, precisión 35, retroceso 55 y más ruido (120) que el rifle entero." },
+
+  "L92_Carbine": { "tier": "A", "short": "Marlin 1894", "reason": "10 balas de .44 Magnum, el apuntado más rápido (20), retroceso 15 y atraviesa. Pega: alcance 25." },
+  "L92_Carbine_Sawn": { "tier": "B", "short": "Marlin recortado", "reason": "Las mismas cifras que el Marlin y cabe en la funda. Pega: solo 5 balas." },
+  "TrapperCarbine": { "tier": "B", "short": "De trampero", "reason": "El mod no la toca: sigue siendo de las armas largas más silenciosas (radio 70). Pega: daño 1–1,4, muy por debajo de las del mod." },
+
+  "Pistol3": { "tier": "A", "short": "Desert Eagle", "reason": "La pistola que más pega (0,9–2,5) y la más precisa (50), con 8 balas de .44. Pega: muy rara y retroceso 40." },
+  "Pistol": { "tier": "A", "short": "Beretta 92FS", "reason": "15 balas de 9 mm y la pistola más común. Pega: daño 0,65–2." },
+  "Glock17": { "tier": "A", "short": "Glock 17", "reason": "17 balas de 9 mm y la pistola más ligera (1,3). Pega: rara y precisión base 35." },
+  "Pistol2": { "tier": "B", "short": "M1911A1", "reason": "Más daño (0,75–2,25) y precisión (45) que las de 9 mm. Pega: solo 7 balas." },
+  "ColtDelta": { "tier": "B", "short": "Colt Delta", "reason": "Daño de .45 con 8 balas. Pega: 10 mm del mod, escasa, y pistola muy rara." },
+  "ColtAce": { "tier": "C", "short": "Colt Ace", "reason": "Cargador de 10 de .22. Pega: daño 0,55–1,5 y el mismo ruido (100) que una de 9 mm." },
+
+  "Revolver_Long": { "tier": "A", "short": "S&W M29", "reason": "Daño 1,25–2,5, no se encasquilla nunca y es poco común. Pega: 6 balas, cartucho a cartucho." },
+  "Revolver": { "tier": "B", "short": "S&W M625", "reason": "Común y no se encasquilla. Ojo: con el mod dispara .45 Auto, no .357 como en el juego base. Pega: 6 balas." },
+  "ColtAnaconda": { "tier": "B", "short": "Anaconda", "reason": "Daño 1,25–2,5 de .44 y alcance 16. Pega: no sale en contenedores; solo la llevan zombis de sheriff y guardabosques." },
+  "ColtPeacemaker": { "tier": "B", "short": "Peacemaker", "reason": "Daño 1,25–2,5 sin encasquillarse. Pega: su .44-40 es munición del mod y escasea." },
+  "ColtPython": { "tier": "B", "short": "Python", "reason": "El revólver más silencioso de .357 (radio 80). Pega: solo la llevan zombis de sheriff y guardabosques." },
+  "Revolver_Short": { "tier": "C", "short": "S&W M36", "reason": "Ligero (1) y silencioso (70). Pega: alcance 12 y precisión 30, la más baja." },
+  "ColtSingleAction22": { "tier": "C", "short": "Frontier Scout", "reason": "El arma más silenciosa del juego (radio 55). Pega: daño 0,75–1,5 y 6 balas cartucho a cartucho." },
+
+  "Shotgun": { "tier": "A", "short": "Mossberg 500", "reason": "La escopeta más común, 6 cartuchos y alcance 15 (el mod lo sube desde 12). Pega: radio de ruido 200, como todas." },
+  "ShotgunSawnoff": { "tier": "A", "short": "Mossberg 500 recortada", "reason": "En el mod tiene las mismas cifras que la entera, pesa menos (3,5) y va en la funda. Pega: rara como botín; puedes fabricarla recortando la entera." },
+  "SPAS12": { "tier": "A", "short": "SPAS-12", "reason": "8 cartuchos, de lo más alto entre escopetas. Pega: rara y ruido 200." },
+  "LAW12": { "tier": "A", "short": "LAW-12", "reason": "8 cartuchos y la llevan zombis de policía. Pega: rara y ruido 200." },
+  "Mossberg500Tactical": { "tier": "A", "short": "Mossberg 590A1", "reason": "8 cartuchos y más ligera (3,5). Pega: muy rara." },
+  "Mossberg500": { "tier": "B", "short": "Mossberg 590", "reason": "Igual que la Mossberg 500 pero bastante más rara." },
+  "Remington870Wood": { "tier": "B", "short": "Remington 870", "reason": "6 cartuchos y poco común. Pega: ninguna ventaja sobre la Mossberg 500, que es más fácil de encontrar." },
+  "Remington870": { "tier": "B", "short": "Remington 870 (sintética)", "reason": "Igual que la de madera, pero no se puede recortar." },
+  "Remington870Sawnoff": { "tier": "B", "short": "870 recortada", "reason": "Mismas cifras que la entera, más ligera y en la funda. Pega: solo se fabrica recortando la 870 de madera." },
+  "JS3T_Shotgun": { "tier": "B", "short": "Ithaca 37", "reason": "Daño de escopeta y la llevan zombis de policía. Pega: 5 cartuchos." },
+  "JS3T_Shotgun_Sawnoff": { "tier": "B", "short": "Ithaca 37 recortada", "reason": "Mismas cifras que la entera y en la funda. Pega: 5 cartuchos y solo se fabrica." },
+  "DoubleBarrelShotgun": { "tier": "C", "short": "Coach Gun", "reason": "Nunca se encasquilla y es poco común. Pega: 2 cartuchos con el ruido de cualquier escopeta." },
+  "DoubleBarrelShotgunSawnoff": { "tier": "C", "short": "Coach Gun recortada", "reason": "Ligera (3) y sin encasquillarse. Pega: 2 cartuchos." },
+
+  "FN_FAL": { "tier": null, "short": "FN FAL", "reason": "Sería de tier S (como la G3), pero el mod la reparte con el nombre mal escrito (Base.FN_Fal) y no sale en ningún sitio." },
+  "UZI": { "tier": null, "short": "UZI", "reason": "Subfusil de 20 balas de 9 mm. No sale como botín y el mod la da a los zombis con el nombre mal escrito (Base.Uzi): no se consigue." },
+  "ColtPythonHunter": { "tier": null, "short": "Python Hunter", "reason": "Python con alcance 16. El mod la define pero no la reparte en ningún sitio." },
+  "DoubleBarrelShotgunSawnoffStock": { "tier": null, "short": "Coach Gun recortada con culata", "reason": "Variante de 2 kg que cabe en la funda. El mod la define pero no la reparte ni tiene receta." }
+}

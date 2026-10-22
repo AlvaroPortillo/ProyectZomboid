@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profesiones de Knox</title>
+  <meta name="description" content="Guía de las 25 profesiones de Project Zomboid 42.21 con datos extraídos de los scripts del juego.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C171B'/%3E%3Ctext x='16' y='23' font-family='Arial Black,Arial' font-weight='900' font-size='20' text-anchor='middle' fill='none' stroke='%235CE1E6' stroke-width='1.6'%3EP%3C/text%3E%3C/svg%3E">
+</head>
+<body data-compact="false" data-page="profesiones">
+  <a class="skip" href="#contenido">Saltar a las profesiones</a>
+
+  <header class="topbar" id="topbar">
+    <div class="topbar__inner">
+      <div class="toprow">
+        <div class="brand">
+          <h1>Project Zomboid</h1>
+          <nav class="tabs" aria-label="Secciones">
+            <a class="tab" href="index.html">Armas</a>
+            <a class="tab" href="profesiones.html" aria-current="page">Profesiones</a>
+          </nav>
+        </div>
+        <div class="controls" role="group" aria-label="Opciones de vista">
+          <a class="btn btn--map" href="https://pzmap.org/" target="pzmap" data-map rel="external" title="Abre pzmap.org en su propia ventana">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 3.5 5.5 2l5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5z"/><path d="M5.5 2v10.5M10.5 3.5V14"/></svg>
+            <span class="btn__label">Mapa</span>
+          </a>
+          <button class="btn" type="button" id="compactBtn" aria-pressed="false">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+            <span class="btn__label">Compacto</span>
+          </button>
+          <button class="btn" type="button" id="themeBtn" aria-label="Cambiar tema">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+            <span class="btn__label" id="themeLabel">Tema claro</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="toprow">
+        <label class="search">
+          <span class="sr-only">Buscar profesión, habilidad o rasgo</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+          <input type="search" id="q" placeholder="Buscar (pulsa /)" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="chips" id="chips" role="group" aria-label="Filtrar por papel"></div>
+      </div>
+
+      <div class="statusline">
+        <span class="coverage" id="coverage"></span>
+        <span class="legend"><span class="cost cost--give">+</span> da puntos <span class="cost cost--take">−</span> cuesta puntos</span>
+        <span class="live" id="live" data-state="off"><span class="live__dot" aria-hidden="true"></span><span id="liveText" class="live__text">Recarga automática: comprobando</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" tabindex="-1">
+    <div id="groups"></div>
+
+    <section class="panel" id="configuraciones" aria-labelledby="config-t">
+      <h2 id="config-t">Configuraciones de la comunidad</h2>
+      <p>Cuatro personajes iniciales propuestos por pzfans para la versión 42.19. Los puntos se han recalculado con los costes de rasgos de la 42.21.</p>
+      <div class="builds" id="builds"></div>
+    </section>
+
+    <section class="panel" id="metodo" aria-labelledby="metodo-t">
+      <h2 id="metodo-t">Método y fuentes</h2>
+      <div id="method"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p id="footnote"></p>
+  </footer>
+
+  <script src="profesiones.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const DATA_FILE = 'profesiones.js';
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+    };
+    const data = () => window.PZ_PROF || { meta: {}, roles: {}, professions: [], builds: [], sources: {} };
+    const MAP_BASE = 'https://pzmap.org/';
+    const mapUrl = room => MAP_BASE + (room ? '?room=' + encodeURIComponent(room) : '');
+    function openMap(url) { const w = window.open(url, 'pzmap', 'popup=yes,width=1400,height=900'); if (w) { w.focus(); return true; } return false; }
+    const costLabel = c => c > 0 ? `+${c}` : c < 0 ? `−${Math.abs(c)}` : '0';
+    const costWord = c => c > 0 ? `Da ${c} punto${c === 1 ? '' : 's'}` : c < 0 ? `Cuesta ${-c} punto${c === -1 ? '' : 's'}` : 'Gratis';
+    const costClass = c => c > 0 ? 'cost--give' : c < 0 ? 'cost--take' : 'cost--free';
+
+    // ---------- Estado en la URL ----------
+    const state = { role: 'all', q: '', compact: false };
+    function readHash() {
+      const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+      const roles = Object.keys(data().roles);
+      state.role = roles.includes(p.get('papel')) ? p.get('papel') : 'all';
+      state.q = p.get('q') || '';
+      state.compact = p.has('compact') ? p.get('compact') === '1' : store.get('pz-compact') === '1';
+    }
+    function writeHash() {
+      const p = new URLSearchParams();
+      if (state.role !== 'all') p.set('papel', state.role);
+      if (state.q) p.set('q', state.q);
+      if (state.compact) p.set('compact', '1');
+      const h = p.toString();
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+      store.set('pz-compact', state.compact ? '1' : '0');
+    }
+
+    function visible(p) {
+      if (state.role !== 'all' && p.role !== state.role) return false;
+      if (!state.q) return true;
+      const q = norm(state.q);
+      return [p.name, p.nameEn, p.roleLabel, ...p.skills.map(s => s.name), ...p.freeTraits.map(t => t.name)].some(x => norm(x).includes(q));
+    }
+
+    // ---------- Render ----------
+    function renderChips() {
+      const d = data();
+      const opts = [['all', 'Todas'], ...Object.entries(d.roles)];
+      $('#chips').innerHTML = opts.map(([id, label]) => {
+        const n = id === 'all' ? d.professions.length : d.professions.filter(p => p.role === id).length;
+        return `<button type="button" class="chip" data-role="${id}" aria-pressed="${state.role === id}">${esc(label)} <span class="chip__n num">${n}</span></button>`;
+      }).join('');
+    }
+
+    function renderCoverage() {
+      const d = data();
+      const shown = d.professions.filter(visible).length;
+      $('#coverage').innerHTML = `<strong>${d.professions.length}</strong> profesiones de la ${esc(d.meta.version)}<span class="coverage__extra"> · mostrando ${shown}</span>`;
+    }
+
+    const PROF_FALLBACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>';
+
+    function skillRow(s) {
+      const pct = s.level * 10;
+      return `<div class="meter" title="${esc(s.desc || '')}"><dt>${esc(s.name)}</dt><dd><div class="meter__track" aria-hidden="true"><div class="meter__fill" style="left:0;width:${Math.max(2, pct)}%"></div></div></dd><dd class="meter__value num">${s.level}</dd></div>`;
+    }
+
+    function traitChip(t, withCost) {
+      return `<li><span class="trait" title="${esc(t.desc || '')}">${esc(t.name)}${withCost ? ` <span class="num trait__cost">${t.cost > 0 ? t.cost : t.cost}</span>` : ''}</span></li>`;
+    }
+
+    function card(p) {
+      const d = data();
+      const icon = p.icon
+        ? `<img class="card__icon card__icon--prof" src="${esc(p.icon)}" alt="Icono de ${esc(p.name)} en el juego" width="64" height="64">`
+        : `<span class="icon-fallback">${PROF_FALLBACK}</span>`;
+      const g = p.guide;
+      const comm = p.community.length ? p.community.map(c => {
+        const src = d.sources[c.src] || {};
+        return `<blockquote class="quote"><p>${esc(c.text)}</p><cite><a href="${esc(src.url)}" target="_blank" rel="noopener noreferrer" title="Título original: ${esc(src.titleOriginal || src.title)}">${esc(src.title)}</a> · versión ${esc(src.version)}</cite></blockquote>`;
+      }).join('') : '<p>Sin valoración de la comunidad verificada para esta profesión.</p>';
+
+      return `<article class="card pcard" id="p-${esc(p.id)}" aria-labelledby="pn-${esc(p.id)}">
+        <div class="card__head">
+          <div class="icon-tile icon-tile--prof">${icon}</div>
+          <div class="card__title">
+            <h3 class="card__name" id="pn-${esc(p.id)}">${esc(p.name)}</h3>
+            <p class="card__alias">En inglés: ${esc(p.nameEn)}</p>
+          </div>
+          <span class="cost ${costClass(p.cost)}" title="${costWord(p.cost)}"><span class="num">${costLabel(p.cost)}</span><span class="sr-only"> ${costWord(p.cost)}</span></span>
+        </div>
+        <div class="tags">
+          <span class="tag">${esc(p.roleLabel)}</span>
+          <span class="tag">${esc(costWord(p.cost))}</span>
+          ${p.recipes.length ? `<span class="tag">${p.recipes.length} receta${p.recipes.length === 1 ? '' : 's'}</span>` : ''}
+        </div>
+        <p class="card__reason">${esc(g.summary)}</p>
+        ${p.desc ? `<p class="pdesc">Descripción del juego: ${esc(p.desc)}</p>` : ''}
+        <dl class="meters">${p.skills.map(skillRow).join('')}</dl>
+        ${p.freeTraits.length ? `<div class="where"><span class="where__label">Rasgos gratis</span><ul class="where__list">${p.freeTraits.map(t => traitChip(t, false)).join('')}</ul></div>` : ''}
+        <div class="procon">
+          <div><p class="label-sub">Puntos fuertes</p><ul class="bullets">${g.strengths.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+          <div><p class="label-sub">Pegas</p><ul class="bullets bullets--con">${g.weaknesses.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        </div>
+        ${p.zones.length ? `<div class="where"><span class="where__label">Dónde ir</span><ul class="where__list">${p.zones.map(z => `<li><a class="where__link" href="${mapUrl(z.room)}" target="pzmap" data-map title="Ver las ${z.count} habitaciones de este tipo en pzmap.org">${esc(z.label)}</a></li>`).join('')}</ul></div>` : ''}
+
+        <details class="more">
+          <summary>Primeros días y rasgos sugeridos</summary>
+          <div class="more__body">
+            <p class="note-subjective">Valoración propia a partir de los datos del juego. No es oficial.</p>
+            <ol class="steps">${g.firstDays.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+            <p class="label-sub">Rasgos sugeridos (coste en puntos según la 42.21)</p>
+            <ul class="where__list">${p.suggestedTraits.map(t => traitChip(t, true)).join('')}</ul>
+          </div>
+        </details>
+
+        ${p.recipes.length ? `<details class="more">
+          <summary>Recetas que conoce (${p.recipes.length})</summary>
+          <div class="more__body"><ul class="recipes">${p.recipes.map(r => `<li>${esc(r.name)}${r.own ? ' <span class="tr-mark">(traducción propia)</span>' : ''}</li>`).join('')}</ul></div>
+        </details>` : ''}
+
+        <details class="more">
+          <summary>Datos del juego (${esc(d.meta.version)})</summary>
+          <div class="more__body">
+            <dl class="kv">
+              <dt>Coste de la profesión</dt><dd class="num">${costLabel(p.cost)}</dd>
+              ${p.boosts.map(b => `<dt>${esc(b.name)} (profesión)</dt><dd class="num">+${b.level}</dd>`).join('')}
+              ${p.freeTraits.map(t => `<dt>Rasgo gratis</dt><dd>${esc(t.name)}</dd>`).join('')}
+            </dl>
+            ${p.freeTraits.map(t => `<p class="path">${esc(t.name)}: ${esc(t.desc)} <code>${esc(t.file)}:${t.line}</code></p>`).join('')}
+            <p class="path">Profesión <code>base:${esc(p.id)}</code> en <code>${esc(p.file)}:${p.line}</code>${p.iconName ? `. Icono <code>${esc(p.iconName)}</code> de <code>media/texturepacks/UI2.pack</code>` : '. El juego no le asigna icono'}.</p>
+          </div>
+        </details>
+
+        <details class="more">
+          <summary>Valoración de la comunidad</summary>
+          <div class="more__body">
+            <p class="note-subjective">Opinión subjetiva de terceros, de otras versiones del juego. Traducida del inglés.</p>
+            ${comm}
+          </div>
+        </details>
+      </article>`;
+    }
+
+    function renderGroups() {
+      const d = data();
+      $('#groups').innerHTML = Object.entries(d.roles).map(([id, label]) => {
+        const list = d.professions.filter(p => p.role === id);
+        const shown = list.filter(visible);
+        if (!shown.length) return '';
+        return `<section class="tier-group role-group" data-role="${id}" aria-labelledby="r-${id}">
+          <div class="tier-mark"><div class="tier-mark__inner">
+            <h2 class="role-title" id="r-${id}">${esc(label)}</h2>
+            <p class="tier-caption"><span class="tier-count num">${shown.length === list.length ? `${list.length} profesiones` : `${shown.length} de ${list.length} visibles`}</span></p>
+          </div></div>
+          <div class="cards">${shown.map(card).join('')}</div>
+        </section>`;
+      }).join('') || '<p class="empty-tier">Ninguna profesión coincide con la búsqueda. Borra el texto o elige «Todas».</p>';
+    }
+
+    function renderBuilds() {
+      const d = data();
+      $('#builds').innerHTML = d.builds.map(b => `<article class="build">
+        <h3>${esc(b.name)} <span class="card__alias">(${esc(b.original)} en el original)</span></h3>
+        <p><strong>${esc(b.profName)}</strong> · <span class="num">${costWord(b.profCost)}</span></p>
+        <p class="label-sub">Rasgos positivos (gastan <span class="num">${b.spent}</span>)</p>
+        <ul class="where__list">${b.good.map(t => `<li><span class="trait">${esc(t.name)} <span class="num trait__cost">${t.cost}</span></span></li>`).join('')}</ul>
+        <p class="label-sub">Rasgos negativos (devuelven <span class="num">${b.refund}</span>)</p>
+        <ul class="where__list">${b.bad.map(t => `<li><span class="trait trait--bad">${esc(t.name)} <span class="num trait__cost">${t.cost}</span></span></li>`).join('')}</ul>
+        <p class="check">Puntos sobrantes con la 42.21: <strong class="num">${b.left}</strong>. La fuente dice ${b.claimedLeft}: ${b.matches ? 'coincide' : 'no coincide'}.</p>
+      </article>`).join('');
+    }
+
+    function renderStatic() {
+      const d = data(), m = d.meta;
+      $('#method').innerHTML = `
+        <p>Versión comprobada: <strong>${esc(m.version)}</strong>. Fecha de consulta: ${esc(m.consulted)}. Ficheros: ${m.files.map(f => `<code>${esc(f)}</code>`).join(' y ')}.</p>
+        <p>${esc(m.pointsRule)}</p>
+        <p>${esc(m.levelRule)}</p>
+        <p>${esc(m.perkRule)}</p>
+        <p>Nombres de profesiones, rasgos, habilidades y recetas: traducción oficial del juego al castellano (carpeta <code>Translate/ES</code>). Las pocas recetas sin traducción oficial llevan la marca «traducción propia».</p>
+        <p>Papel, resumen, puntos fuertes, pegas, primeros días y rasgos sugeridos son valoración propia, no datos del juego.</p>
+        <p>Valoración de la comunidad, siempre aparte:</p>
+        <ul class="sources">${Object.values(d.sources).map(s => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" title="Título original: ${esc(s.titleOriginal || s.title)}">${esc(s.title)}</a>. ${esc(s.where)} Versión ${esc(s.version)}.</li>`).join('')}</ul>`;
+      $('#footnote').textContent = `Datos de Project Zomboid ${m.version} leídos de los ficheros del juego instalado el ${m.consulted}. Sin mods.`;
+    }
+
+    function renderAll() {
+      document.body.dataset.compact = String(state.compact);
+      $('#compactBtn').setAttribute('aria-pressed', String(state.compact));
+      $('#q').value = state.q;
+      renderChips(); renderCoverage(); renderGroups(); renderBuilds(); renderStatic();
+    }
+
+    // ---------- Eventos ----------
+    document.addEventListener('click', e => {
+      const ml = e.target.closest('a[data-map]');
+      if (ml && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) { if (openMap(ml.href)) e.preventDefault(); return; }
+      const chip = e.target.closest('[data-role]');
+      if (chip && chip.classList.contains('chip')) { state.role = chip.dataset.role; writeHash(); renderChips(); renderCoverage(); renderGroups(); }
+    });
+    let qTimer;
+    $('#q').addEventListener('input', e => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.q = e.target.value.trim(); writeHash(); renderCoverage(); renderGroups(); }, 120); });
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement !== $('#q') && !e.target.closest('input, textarea')) { e.preventDefault(); $('#q').focus(); }
+      if (e.key === 'Escape' && document.activeElement === $('#q') && state.q) { state.q = ''; $('#q').value = ''; writeHash(); renderCoverage(); renderGroups(); }
+    });
+    $('#compactBtn').addEventListener('click', () => { state.compact = !state.compact; writeHash(); document.body.dataset.compact = String(state.compact); $('#compactBtn').setAttribute('aria-pressed', String(state.compact)); });
+    window.addEventListener('hashchange', () => { readHash(); renderAll(); });
+
+    // Tema
+    const currentTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t;
+      $('#themeLabel').textContent = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro';
+      $('#themeBtn').setAttribute('aria-label', currentTheme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+    }
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => applyTheme(null));
+    $('#themeBtn').addEventListener('click', () => { const t = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pz-theme', t); applyTheme(t); });
+
+    new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
+
+    // ---------- Recarga automática ----------
+    // Si cambian los datos, se repinta sin perder el filtro. Si cambian la página o los estilos, se recarga entera (el filtro va en la URL).
+    const last = {};
+    const live = $('#live'), liveText = $('#liveText');
+    async function poll() {
+      try {
+        for (const f of [DATA_FILE, 'profesiones.html', 'styles.css']) {
+          const res = await fetch(f, { cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (last[f] !== undefined && text !== last[f]) {
+            if (f !== DATA_FILE) { location.reload(); return; }
+            const s = document.createElement('script'); s.textContent = text; document.head.appendChild(s); s.remove();
+            renderAll();
+            live.dataset.state = 'flash';
+            liveText.textContent = 'Datos actualizados ' + new Date().toLocaleTimeString('es-ES');
+            setTimeout(() => { live.dataset.state = 'on'; }, 1500);
+          }
+          last[f] = text;
+        }
+        if (live.dataset.state === 'off') { live.dataset.state = 'on'; liveText.textContent = 'Recarga automática activa'; }
+      } catch {
+        live.dataset.state = 'off';
+        liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+        return;
+      }
+      setTimeout(poll, document.hidden ? 10000 : 2000);
+    }
+
+    readHash();
+    const savedTheme = store.get('pz-theme');
+    applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null);
+    renderAll();
+    if (location.protocol.startsWith('http')) poll();
+    else liveText.textContent = 'Recarga automática desactivada: abre el panel con el servidor local';
+  })();
+  </script>
+</body>
+</html>

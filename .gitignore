@@ -1,0 +1,19 @@
+﻿# Secretos: nunca se suben
+.env
+.env.*
+!.env.example
+
+# Dependencias y builds
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+
+# Editor y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
